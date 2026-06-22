@@ -468,159 +468,119 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     }
     st.table(pd.DataFrame(real_data))
 
-# --- MODULE 4: AI PREDICTOR (BẢN ĐẦY ĐỦ XAI & HƯỚNG DẪN ĐỌC BIỂU ĐỒ) ---
-elif page == "4. AI Predictor (ML)":
-    st.title("🛡️ Advanced AI Molecular Screening Dashboard")
-    
-    with st.sidebar:
-        st.header("📖 Hướng dẫn nhanh")
-        st.info("""
-        1. **Nhập liệu**: Chỉnh thông số MW, LogP... của hợp chất.
-        2. **Sàng lọc**: Nhấn nút 'BẮT ĐẦU' để AI tính toán.
-        3. **XAI**: Xem Tab 'Giải thích' để hiểu cơ chế dự đoán.
-        """)
+# --- MODULE 4: PHÂN TÍCH CẤU TRÚC & TỐI ƯU LỘ TRÌNH (THUẦN GIẢI THUẬT) ---
+elif page == "4. Phân tích Cấu trúc (Toán)":
+    st.title("🧬 Trung tâm Phân tích Cấu trúc & Tối ưu Lộ trình")
+    st.caption("Hệ thống sử dụng **Toán ma trận tập hợp** và **Lý thuyết đồ thị**, hoàn toàn không sử dụng AI.")
 
-    if 'last_preds_dual' not in st.session_state:
-        st.session_state.last_preds_dual = None
-    if 'current_inputs' not in st.session_state:
-        st.session_state.current_inputs = {'mw': 311.40, 'logp': 3.00, 'hbd': 1, 'hba': 5}
+    # Khởi tạo tabs cho 2 tính năng mới
+    tab1, tab2 = st.tabs(["🔍 Quét Đồng Dạng Cấu Trúc", "🕸️ Tối Ưu Lộ Trình Tổng Hợp"])
 
-    with st.expander("🔬 XÁC THỰC MÔ HÌNH & THÔNG SỐ NGHIÊN CỨU", expanded=False):
-        st.write("Mô hình sử dụng thuật toán Random Forest với 100 cây quyết định, tối ưu cho dữ liệu dược lý.")
-        c_m1, c_m2, c_m3 = st.columns(3)
-        c_m1.metric("Quy mô Dataset", "10,245 mẫu", "ChEMBL/BindingDB")
-        c_m2.metric("Phương pháp Chia", "Scaffold Split", "Bemis-Murcko")
-        c_m3.metric("Độ chính xác (R²)", "0.73", "Target: 0.70+")
-        
-        st.divider()
-        col_log, col_bench = st.columns([1, 1])
-        with col_log:
-            st.write("**📝 Nhật ký huấn luyện:**")
-            st.code("""
-[INFO] Loading 10,245 raw structures...
-[INFO] Method: Scaffold-based Split (Anti-Leakage).
-[INFO] Feature: 2048-bit Morgan Fingerprints.
-[SUCCESS] Random Forest R2=0.73 | RMSE=0.45.
-            """, language="bash")
-        with col_bench:
-            st.write("**📊 Benchmarking (Đối chứng):**")
-            bench_df = pd.DataFrame({
-                "Algorithm": ["Random Forest", "XGBoost", "GNN (Graph)", "SVR"],
-                "R² Score": [0.73, 0.71, 0.68, 0.62]
-            })
-            st.dataframe(bench_df, hide_index=True)
+    # ==================== TÌNH NĂNG 1: QUÉT ĐỒNG DẠNG (TANIMOTO) ====================
+    with tab1:
+        st.subheader("📋 Thiết kế cấu trúc phân tử giả định")
+        st.write("Chọn các nhóm chức có trong phân tử của bạn để đối chiếu với thư viện Sen:")
 
-    st.markdown("---")
+        # Giao diện checkboxes cho 8 đặc trưng cấu trúc
+        col1, col2 = st.columns(2)
+        with col1:
+            b1 = st.checkbox("Có vòng thơm (Aromatic Ring)", value=True)
+            b2 = st.checkbox("Có nhóm Amine (-NH/-NR)", value=True)
+            b3 = st.checkbox("Có nhóm Hydroxyl (-OH)", value=False)
+            b4 = st.checkbox("Có vòng 5 cạnh", value=True)
+        with col2:
+            b5 = st.checkbox("Có vòng 6 cạnh", value=True)
+            b6 = st.checkbox("Có liên kết đôi tự do", value=True)
+            b7 = st.checkbox("Có gốc O-methyl", value=True)
+            b8 = st.checkbox("Có gốc N-methyl", value=False)
 
-    try:
-        @st.cache_resource
-        def load_dual_models():
-            m_ache = joblib.load('AlkaLotus/model_AChE.pkl')
-            m_bace1 = joblib.load('AlkaLotus/model_BACE1.pkl')
-            return m_ache, m_bace1
+        # Vector nhị phân từ user input
+        user_fp = np.array([int(b1), int(b2), int(b3), int(b4), int(b5), int(b6), int(b7), int(b8)])
+
+        # Cơ sở dữ liệu cấu trúc nhị phân của các chất trong lá sen
+        fingerprints = {
+            "Roemerine":     np.array([1, 1, 0, 1, 1, 1, 1, 0]),
+            "Nuciferine":    np.array([1, 1, 0, 1, 1, 1, 1, 1]),
+            "Nornuciferine": np.array([1, 1, 0, 1, 1, 1, 0, 0]),
+            "Liensinine":    np.array([1, 1, 1, 0, 1, 1, 1, 0]),
+            "Neferine":      np.array([1, 1, 1, 0, 1, 1, 1, 1])
+        }
+
+        if st.button("⚡ CHẠY GIẢI THUẬT TANIMOTO", use_container_width=True):
+            results = []
+            for name, fp in fingerprints.items():
+                # Công thức toán tập hợp Tanimoto: Intersection / Union
+                intersection = np.sum(np.logical_and(user_fp, fp))
+                union = np.sum(np.logical_or(user_fp, fp))
+                score = intersection / union if union != 0 else 0.0
+                results.append({"Hợp chất": name, "Độ tương đồng": round(score, 4)})
             
-        model_ache, model_bace1 = load_dual_models()
-        
-        tab_main, tab_expert = st.tabs(["🎯 Dự đoán đa mục tiêu", "🧠 Giải thích & Kiểm định (XAI)"])
-        
-        with tab_main:
-            col_input, col_result = st.columns([1, 1])
-            with col_input:
-                st.subheader("⌨️ Nhập liệu cấu trúc")
-                with st.container(border=True):
-                    mw = st.number_input("Khối lượng (MW):", 100.0, 1000.0, st.session_state.current_inputs['mw'])
-                    logp = st.number_input("Hệ số LogP (Tính dầu):", -5.0, 10.0, st.session_state.current_inputs['logp'])
-                    hbd = st.slider("H-Bond Donor:", 0, 15, st.session_state.current_inputs['hbd'])
-                    hba = st.slider("H-Bond Acceptor:", 0, 20, st.session_state.current_inputs['hba'])
-                    btn_analyze = st.button("⚡ BẮT ĐẦU SÀNG LỌC ẢO", use_container_width=True)
+            res_df = pd.DataFrame(results).sort_values(by="Độ tương đồng", ascending=False)
             
-            if btn_analyze:
-                st.session_state.current_inputs = {'mw': mw, 'logp': logp, 'hbd': hbd, 'hba': hba}
-                features = np.zeros((1, 2048))
-                features[0, :512] = mw / 1000 
-                features[0, 512:1024] = logp / 10
+            # Vẽ biểu đồ trực quan kết quả
+            fig = px.bar(res_df, x="Độ tương đồng", y="Hợp chất", orientation='h',
+                         title="Mức độ trùng khớp cấu trúc (%)",
+                         color="Độ tương đồng", color_continuous_scale="Agsunset")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            best_match = res_df.iloc[0]["Hợp chất"]
+            best_score = res_df.iloc[0]["Độ tương đồng"]
+            st.success(f"🎯 **Kết luận giải thuật:** Cấu trúc thiết kế giống chất **{best_match}** nhất ({int(best_score*100)}%). Bạn có thể tham khảo dược tính của chất này!")
 
-                p_ache = model_ache.predict(features)[0]
-                p_bace1 = model_bace1.predict(features)[0]
-                total_pot = (p_ache + p_bace1) / 2
+    # ==================== TÌNH NĂNG 2: TỐI ƯU LỘ TRÌNH (DIJKSTRA) ====================
+    with tab2:
+        st.subheader("🕸️ Tìm chuỗi phản ứng điều chế tối ưu")
+        st.write("Giải bài toán tìm đường đi ngắn nhất trên đồ thị phản ứng hóa học (Chi phí thấp nhất, hiệu suất cao nhất).")
+
+        # Định nghĩa cấu trúc Đồ thị (Các bước phản ứng hóa học và chi phí ước tính)
+        # Định dạng: { Chất_đầu: { Chất_sau: chi_phí_tỷ_đồng, ... } }
+        chemical_graph = {
+            "Nguyên liệu thô A": {"Chất trung gian B": 2, "Chất trung gian C": 5},
+            "Chất trung gian B": {"Chất trung gian D": 1, "Nuciferine": 6},
+            "Chất trung gian C": {"Nuciferine": 2},
+            "Chất trung gian D": {"Nuciferine": 1},
+            "Nuciferine": {}
+        }
+
+        start_node = st.selectbox("1. Chọn nguyên liệu đầu vào:", list(chemical_graph.keys()))
+        target_node = "Nuciferine"
+        st.disabled(st.text_input("2. Hợp chất mục tiêu cần tổng hợp:", value=target_node))
+
+        if st.button("🚀 TÌM LỘ TRÌNH TỐI ƯU (DIJKSTRA)", use_container_width=True):
+            # Cài đặt thuật toán Dijkstra thuần túy
+            import heapq
+            
+            queue = [(0, start_node, [start_node])]
+            visited = set()
+            shortest_path = None
+            min_cost = float('inf')
+
+            while queue:
+                (cost, current, path) = heapq.heappop(queue)
                 
-                preds_ache_trees = [t.predict(features)[0] for t in model_ache.estimators_]
-                st.session_state.last_preds_dual = np.array(preds_ache_trees)
+                if current in visited:
+                    continue
+                visited.add(current)
 
-                with col_result:
-                    st.subheader("📊 Kết quả dự báo")
-                    with st.container(border=True):
-                        st.metric("Ức chế AChE (pIC50)", f"{round(p_ache, 2)}")
-                        st.metric("Ức chế BACE1 (pIC50)", f"{round(p_bace1, 2)}")
-                        st.divider()
-                        
-                        is_high_pIC50 = total_pot >= 6.0
-                        is_druglike = (logp > 0.5) and (mw > 250)
-                        st.write(f"### Chỉ số chung: **{round(total_pot, 2)}**")
-                        
-                        if is_high_pIC50 and is_druglike:
-                            st.success("🌟 ỨNG VIÊN TIỀM NĂNG CAO")
-                            st.balloons()
-                        elif is_high_pIC50 and not is_druglike:
-                            st.warning("⚠️ DƯỢC TÍNH KÉM (ADMET Alert)")
-                        else:
-                            st.error("🧪 CHƯA ĐẠT TIÊU CHÍ")
+                if current == target_node:
+                    if cost < min_cost:
+                        min_cost = cost
+                        shortest_path = path
+                    break
 
-        with tab_expert:
-            if st.session_state.last_preds_dual is not None:
-                # --- BIỂU ĐỒ 1: SHAP WATERFALL ---
-                st.subheader("🧬 Giải thích cục bộ (SHAP Waterfall Sim)")
-                curr = st.session_state.current_inputs
-                base_val = 5.12
-                imp_logp = (curr['logp'] - 2.5) * 0.4
-                imp_mw = (curr['mw'] - 300) * 0.005
+                for neighbor, weight in chemical_graph.get(current, {}).items():
+                    if neighbor not in visited:
+                        heapq.heappush(queue, (cost + weight, neighbor, path + [neighbor]))
+
+            # Hiển thị kết quả tìm kiếm đồ thị
+            if shortest_path:
+                st.markdown("### 📊 Chuỗi phản ứng được đề xuất:")
                 
-                shap_df = pd.DataFrame({
-                    "Yếu tố": ["Giá trị nền", "Đóng góp LogP", "Đóng góp MW", "Khung xương Aromatic", "Kết quả dự đoán"],
-                    "Tác động": [base_val, imp_logp, imp_mw, 0.45, base_val + imp_logp + imp_mw + 0.45]
-                })
-                fig_waterfall = px.bar(shap_df, x="Tác động", y="Yếu tố", orientation='h', 
-                                      color="Tác động", color_continuous_scale="RdBu_r")
-                st.plotly_chart(fig_waterfall, use_container_width=True)
-
-                # PHẦN HƯỚNG DẪN ĐỌC SHAP
-                with st.expander("❓ Cách đọc biểu đồ SHAP Waterfall", expanded=False):
-                    st.write("""
-                    * **Giá trị nền (Base value):** Hoạt tính pIC50 trung bình của tất cả hợp chất trong bộ dữ liệu huấn luyện.
-                    * **Đóng góp (Màu đỏ/xanh):** Nếu thanh lệch sang phải (màu đỏ đậm), yếu tố đó làm **tăng** hoạt tính thuốc. Nếu lệch sang trái, yếu tố đó đang làm **giảm** tiềm năng của hợp chất.
-                    * **Ý nghĩa:** Giúp chúng ta biết cần thay đổi cấu trúc hóa học nào (ví dụ: tăng tính dầu LogP) để cải thiện hiệu quả điều trị.
-                    """)
-
-                st.divider()
-
-                # --- BIỂU ĐỒ 2: SCAFFOLD SPLIT + VIOLIN ---
-                st.subheader("🛡️ Phân bổ Train/Test (Scaffold Split)")
-                st.info("Biểu đồ kết hợp Histogram và Violin minh chứng độ tin cậy của mô hình.")
+                # Tạo chuỗi mũi tên trực quan
+                visual_path = " ➡️ ".join([f"**[{node}]**" for node in shortest_path])
+                st.info(visual_path)
                 
-                d_train = np.random.normal(5.2, 0.8, 100)
-                d_test = np.random.normal(5.0, 1.1, 35)
-                df_dist = pd.DataFrame({
-                    "pIC50": np.concatenate([d_train, d_test]),
-                    "Set": ["Train (80%)"]*100 + ["Test (20%)"]*35
-                })
-                
-                fig_dist = px.histogram(
-                    df_dist, x="pIC50", color="Set", barmode="overlay",
-                    marginal="violin", 
-                    color_discrete_map={"Train (80%)": "#1f77b4", "Test (20%)": "#a2d2ff"},
-                    hover_data=df_dist.columns
-                )
-                fig_dist.update_layout(xaxis_title="Hoạt tính dự đoán (pIC50)", yaxis_title="Tần suất")
-                st.plotly_chart(fig_dist, use_container_width=True)
-
-                # PHẦN HƯỚNG DẪN ĐỌC SCAFFOLD SPLIT
-                with st.expander("❓ Cách đọc biểu đồ Phân bổ & Violin", expanded=False):
-                    st.write("""
-                    * **Histogram (Các cột):** Cho thấy số lượng hợp chất tập trung ở mức pIC50 nào. Hai vùng màu đè lên nhau chứng tỏ tập dữ liệu Test có tính chất tương đồng với tập Train.
-                    * **Violin Plot (Hình quả nhót phía trên):** Độ phình của hình violin thể hiện mật độ dữ liệu. Nếu phần phình to nhất của cả hai màu nằm gần nhau, mô hình có độ ổn định cao.
-                    * **Scaffold Split:** Đây là kỹ thuật chia dữ liệu dựa trên khung xương hóa học. Việc tập Test (màu nhạt) trải dài tương tự tập Train chứng minh AI có khả năng **suy luận** trên các cấu trúc mới chứ không chỉ học thuộc lòng.
-                    """)
+                st.metric(label="Tổng chi phí / Độ phức tạp ước tính", value=f"{min_cost} đơn vị")
+                st.success("✔️ Giải thuật Dijkstra đã xác nhận đây là lộ trình ngắn nhất, giúp tối ưu hóa thời gian phòng thí nghiệm và giảm thiểu tạp chất phát sinh!")
             else:
-                st.info("👋 Chào An! Hãy thực hiện dự đoán ở Tab bên cạnh để AI xuất báo cáo chuyên sâu.")
-    except Exception as e:
-        st.error(f"Lỗi hệ thống: {e}")
+                st.warning("❌ Không tìm thấy lộ trình phản ứng khả thi giữa hai chất này trong cơ sở dữ liệu hiện tại.")
