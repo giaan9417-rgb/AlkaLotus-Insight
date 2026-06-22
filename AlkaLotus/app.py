@@ -146,7 +146,14 @@ st.sidebar.markdown("<div style='text-align: justify; font-size: 0.9em;'><b>Hệ
 st.sidebar.divider()
 page = st.sidebar.radio(
     "Danh mục hệ thống",
-    ["1. Thư viện Alkaloid", "2. Mô phỏng Docking 3D", "3. Phân tích & Xuất báo cáo", "4. AI Predictor (ML)"]
+    [
+        "1. Thư viện Alkaloid",
+        "2. Mô phỏng Docking 3D",
+        "3. Phân tích & Xuất báo cáo",
+        "4. Phân tích Cấu trúc (Toán)",
+        "5. Tối ưu Dung môi (Toán)",
+        "6. Động học Chiết tách (Toán)"
+    ]
 )
 st.sidebar.divider()
 st.sidebar.caption("👨‍ Học sinh: **Quách Gia An & Nguyễn Lê Bách Hợp**")
@@ -469,118 +476,166 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     st.table(pd.DataFrame(real_data))
 
 # --- MODULE 4: PHÂN TÍCH CẤU TRÚC & TỐI ƯU LỘ TRÌNH (THUẦN GIẢI THUẬT) ---
+# ==================== MODULE 4: PHÂN TÍCH CẤU TRÚC (TANIMOTO) ====================
 elif page == "4. Phân tích Cấu trúc (Toán)":
-    st.title("🧬 Trung tâm Phân tích Cấu trúc & Tối ưu Lộ trình")
-    st.caption("Hệ thống sử dụng **Toán ma trận tập hợp** và **Lý thuyết đồ thị**, hoàn toàn không sử dụng AI.")
+    st.title("🧬 Trung tâm Phân tích Cấu trúc Phân tử")
+    st.caption("Hệ thống sử dụng **Toán ma trận tập hợp Tanimoto** để quét đồng dạng cấu trúc phân tử.")
 
-    # Khởi tạo tabs cho 2 tính năng mới
-    tab1, tab2 = st.tabs(["🔍 Quét Đồng Dạng Cấu Trúc", "🕸️ Tối Ưu Lộ Trình Tổng Hợp"])
+    st.subheader("📋 Thiết kế cấu trúc phân tử giả định")
+    st.write("Chọn các nhóm chức có trong phân tử của bạn để đối chiếu với thư viện Sen:")
 
-    # ==================== TÌNH NĂNG 1: QUÉT ĐỒNG DẠNG (TANIMOTO) ====================
-    with tab1:
-        st.subheader("📋 Thiết kế cấu trúc phân tử giả định")
-        st.write("Chọn các nhóm chức có trong phân tử của bạn để đối chiếu với thư viện Sen:")
+    # Giao diện checkboxes cho 8 đặc trưng cấu trúc hóa học
+    col1, col2 = st.columns(2)
+    with col1:
+        b1 = st.checkbox("Có vòng thơm (Aromatic Ring)", value=True)
+        b2 = st.checkbox("Có nhóm Amine (-NH/-NR)", value=True)
+        b3 = st.checkbox("Có nhóm Hydroxyl (-OH)", value=False)
+        b4 = st.checkbox("Có vòng 5 cạnh", value=True)
+    with col2:
+        b5 = st.checkbox("Có vòng 6 cạnh", value=True)
+        b6 = st.checkbox("Có liên kết đôi tự do", value=True)
+        b7 = st.checkbox("Có gốc O-methyl", value=True)
+        b8 = st.checkbox("Có gốc N-methyl", value=False)
 
-        # Giao diện checkboxes cho 8 đặc trưng cấu trúc
+    # Vector nhị phân từ lựa chọn của người dùng
+    user_fp = np.array([int(b1), int(b2), int(b3), int(b4), int(b5), int(b6), int(b7), int(b8)])
+
+    # Cơ sở dữ liệu cấu trúc nhị phân của các Alkaloid chính trong lá sen
+    fingerprints = {
+        "Roemerine":     np.array([1, 1, 0, 1, 1, 1, 1, 0]),
+        "Nuciferine":    np.array([1, 1, 0, 1, 1, 1, 1, 1]),
+        "Nornuciferine": np.array([1, 1, 0, 1, 1, 1, 0, 0]),
+        "Liensinine":    np.array([1, 1, 1, 0, 1, 1, 1, 0]),
+        "Neferine":      np.array([1, 1, 1, 0, 1, 1, 1, 1])
+    }
+
+    if st.button("⚡ CHẠY GIẢI THUẬT TANIMOTO", use_container_width=True):
+        results = []
+        for name, fp in fingerprints.items():
+            # Tính toán chỉ số toán học Tanimoto bằng ma trận Numpy
+            intersection = np.sum(np.logical_and(user_fp, fp))
+            union = np.sum(np.logical_or(user_fp, fp))
+            score = intersection / union if union != 0 else 0.0
+            results.append({"Hợp chất": name, "Độ tương đồng": round(score, 4)})
+        
+        res_df = pd.DataFrame(results).sort_values(by="Độ tương đồng", ascending=False)
+        
+        # Biểu đồ Plotly hiển thị mức độ trùng khớp cấu trúc
+        fig = px.bar(res_df, x="Độ tương đồng", y="Hợp chất", orientation='h',
+                     title="Mức độ trùng khớp cấu trúc (%)",
+                     color="Độ tương đồng", color_continuous_scale="Agsunset")
+        st.plotly_chart(fig, use_container_width=True)
+        
+        best_match = res_df.iloc[0]["Hợp chất"]
+        best_score = res_df.iloc[0]["Độ tương đồng"]
+        st.success(f"🎯 **Kết luận giải thuật:** Cấu trúc thiết kế giống chất **{best_match}** nhất ({int(best_score*100)}%). Bạn có thể tham khảo dược tính của chất này!")
+
+
+# ==================== MODULE 5: TỐI ƯU DUNG MÔI CHIẾT TÁCH (TOÁN 3D) ====================
+elif page == "5. Tối ưu Dung môi (Toán)":
+    st.title("🧪 Hệ thống Tối ưu hóa Dung môi Chiết tách Alkaloid")
+    st.caption("Ứng dụng **Khoảng cách Không gian 3D (Hansen Parameters)** để tìm hỗn hợp dung môi tối ưu nhất.")
+
+    st.write("Chọn mục tiêu chất cần chiết xuất và cấu hình tỷ lệ dung môi phòng thí nghiệm của bạn:")
+
+    # 1. Lựa chọn Alkaloid mục tiêu cần chiết tách
+    target_alkaloid = st.selectbox("1. Chọn Alkaloid bạn muốn chiết tách:", ["Nuciferine", "Roemerine", "Liensinine"])
+
+    # Tọa độ không gian độ tan (Dispersion, Polar, Hydrogen bonding) theo lý thuyết Hansen
+    target_coords = {
+        "Nuciferine": {"dD": 18.5, "dP": 6.2, "dH": 5.1},
+        "Roemerine":  {"dD": 18.2, "dP": 5.8, "dH": 4.8},
+        "Liensinine":  {"dD": 19.1, "dP": 8.5, "dH": 12.3}
+    }
+    
+    alk_c = target_coords[target_alkaloid]
+    st.info(f"📍 Tọa độ Hansen của **{target_alkaloid}**: $\delta_D$ = {alk_c['dD']}, $\delta_P$ = {alk_c['dP']}, $\delta_H$ = {alk_c['dH']}")
+
+    # 2. Thanh trượt thiết kế cấu hình tỷ lệ hỗn hợp dung môi phòng thí nghiệm
+    st.markdown("### 🎛️ Cấu hình tỷ lệ hỗn hợp Dung môi (Tổng phải bằng 100%)")
+    
+    sol_a = st.slider("Tỷ lệ Ethanol (%)", min_value=0, max_value=100, value=70)
+    sol_b = st.slider("Tỷ lệ Nước cất (%)", min_value=0, max_value=100 - sol_a, value=100 - sol_a)
+    sol_c = 100 - sol_a - sol_b
+    
+    st.warning(f"🧪 **Hỗn hợp hiện tại:** {sol_a}% Ethanol | {sol_b}% Nước | {sol_c}% Acetone")
+
+    if st.button("📊 TÍNH TOÁN HIỆU SUẤT CHIẾT TÁCH", use_container_width=True):
+        # Tọa độ Hansen của từng loại dung môi nguyên chất [dD, dP, dH]
+        ethanol = np.array([15.8, 8.8, 19.4])
+        water = np.array([15.5, 16.0, 42.3])
+        acetone = np.array([15.5, 10.4, 7.0])
+
+        # Tính toán tọa độ trung bình của hỗn hợp dựa trên tỷ lệ % người dùng kéo
+        mix_dD = (sol_a * ethanol[0] + sol_b * water[0] + sol_c * acetone[0]) / 100
+        mix_dP = (sol_a * ethanol[1] + sol_b * water[1] + sol_c * acetone[1]) / 100
+        mix_dH = (sol_a * ethanol[2] + sol_b * water[2] + sol_c * acetone[2]) / 100
+
+        # Công thức tính Khoảng cách Độ tan Hansen (Ra) hình học giải tích không gian 3D
+        distance = np.sqrt(
+            4 * (mix_dD - alk_c["dD"])**2 + 
+            (mix_dP - alk_c["dP"])**2 + 
+            (mix_dH - alk_c["dH"])**2
+        )
+
+        # Chuẩn hóa khoảng cách hình học thành hiệu suất % (Càng gần nhau -> Độ tan càng cao)
+        efficiency = max(0, min(100, (1 - (distance / 30)) * 100))
+
+        st.markdown("### 📉 Kết quả phân tích toán học:")
         col1, col2 = st.columns(2)
         with col1:
-            b1 = st.checkbox("Có vòng thơm (Aromatic Ring)", value=True)
-            b2 = st.checkbox("Có nhóm Amine (-NH/-NR)", value=True)
-            b3 = st.checkbox("Có nhóm Hydroxyl (-OH)", value=False)
-            b4 = st.checkbox("Có vòng 5 cạnh", value=True)
+            st.metric(label="Khoảng cách Hansen (Ra)", value=f"{round(distance, 2)}")
         with col2:
-            b5 = st.checkbox("Có vòng 6 cạnh", value=True)
-            b6 = st.checkbox("Có liên kết đôi tự do", value=True)
-            b7 = st.checkbox("Có gốc O-methyl", value=True)
-            b8 = st.checkbox("Có gốc N-methyl", value=False)
+            st.metric(label="Hiệu suất hòa tan ước tính", value=f"{round(efficiency, 1)}%")
 
-        # Vector nhị phân từ user input
-        user_fp = np.array([int(b1), int(b2), int(b3), int(b4), int(b5), int(b6), int(b7), int(b8)])
+        # Hệ thống phản hồi thông minh đưa ra giải pháp thực nghiệm
+        if efficiency > 75:
+            st.success("🎉 **Tỷ lệ tuyệt vời!** Hỗn hợp dung môi này cực kỳ phù hợp, khả năng hòa tan chất mục tiêu rất cao, giúp ông tiết kiệm hóa chất khi chiết thực tế.")
+        elif efficiency > 50:
+            st.warning("⚠️ **Tỷ lệ trung bình:** Dung môi này chiết được chất nhưng hiệu suất chưa tối ưu. Ông nên tăng tỷ lệ Ethanol hoặc giảm bớt Nước xem sao.")
+        else:
+            st.error("❌ **Hiệu suất quá thấp:** Dung môi quá phân cực hoặc quá kém phân cực so với chất. Khả năng cao chất sẽ bị lắng cặn, không chiết ra được.")
+# ==================== MODULE 6: MÔ PHỎNG ĐỘNG HỌC CHIẾT TÁCH (TOÁN ĐỒ THỊ) ====================
+elif page == "6. Động học Chiết tách (Toán)":
+    st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
+    st.caption("Ứng dụng toán vi phân/hàm số mũ để mô phỏng nồng độ Alkaloid thu được theo thời gian thực.")
 
-        # Cơ sở dữ liệu cấu trúc nhị phân của các chất trong lá sen
-        fingerprints = {
-            "Roemerine":     np.array([1, 1, 0, 1, 1, 1, 1, 0]),
-            "Nuciferine":    np.array([1, 1, 0, 1, 1, 1, 1, 1]),
-            "Nornuciferine": np.array([1, 1, 0, 1, 1, 1, 0, 0]),
-            "Liensinine":    np.array([1, 1, 1, 0, 1, 1, 1, 0]),
-            "Neferine":      np.array([1, 1, 1, 0, 1, 1, 1, 1])
-        }
+    st.markdown("### 🎛️ Cấu hình thông số thực nghiệm phòng thí nghiệm")
+    st.write("Điều chỉnh các thông số dưới đây để xem sự thay đổi của đường cong chiết tách:")
 
-        if st.button("⚡ CHẠY GIẢI THUẬT TANIMOTO", use_container_width=True):
-            results = []
-            for name, fp in fingerprints.items():
-                # Công thức toán tập hợp Tanimoto: Intersection / Union
-                intersection = np.sum(np.logical_and(user_fp, fp))
-                union = np.sum(np.logical_or(user_fp, fp))
-                score = intersection / union if union != 0 else 0.0
-                results.append({"Hợp chất": name, "Độ tương đồng": round(score, 4)})
-            
-            res_df = pd.DataFrame(results).sort_values(by="Độ tương đồng", ascending=False)
-            
-            # Vẽ biểu đồ trực quan kết quả
-            fig = px.bar(res_df, x="Độ tương đồng", y="Hợp chất", orientation='h',
-                         title="Mức độ trùng khớp cấu trúc (%)",
-                         color="Độ tương đồng", color_continuous_scale="Agsunset")
-            st.plotly_chart(fig, use_container_width=True)
-            
-            best_match = res_df.iloc[0]["Hợp chất"]
-            best_score = res_df.iloc[0]["Độ tương đồng"]
-            st.success(f"🎯 **Kết luận giải thuật:** Cấu trúc thiết kế giống chất **{best_match}** nhất ({int(best_score*100)}%). Bạn có thể tham khảo dược tính của chất này!")
+    col1, col2 = st.columns(2)
+    with col1:
+        # Nồng độ bão hòa tối đa lý thuyết (mg hoạt chất / g lá sen khô)
+        qe = st.number_input("1. Dung lượng chiết tối đa lý thuyết (Qe - mg/g):", min_value=1.0, max_value=100.0, value=25.0)
+    with col2:
+        # Hằng số vận tốc chiết (tăng lên nếu có khuấy từ mạnh hoặc gia nhiệt tăng nhiệt độ)
+        k2 = st.slider("2. Hằng số vận tốc chiết (k2 - g/mg.phút):", min_value=0.001, max_value=0.100, value=0.015, step=0.001)
 
-    # ==================== TÌNH NĂNG 2: TỐI ƯU LỘ TRÌNH (DIJKSTRA) ====================
-    with tab2:
-        st.subheader("🕸️ Tìm chuỗi phản ứng điều chế tối ưu")
-        st.write("Giải bài toán tìm đường đi ngắn nhất trên đồ thị phản ứng hóa học (Chi phí thấp nhất, hiệu suất cao nhất).")
+    # Khởi tạo trục thời gian từ 0 đến 180 phút (chia làm 100 bước để vẽ đồ thị mượt)
+    time_steps = np.linspace(0, 180, 100)
 
-        # Định nghĩa cấu trúc Đồ thị (Các bước phản ứng hóa học và chi phí ước tính)
-        # Định dạng: { Chất_đầu: { Chất_sau: chi_phí_tỷ_đồng, ... } }
-        chemical_graph = {
-            "Nguyên liệu thô A": {"Chất trung gian B": 2, "Chất trung gian C": 5},
-            "Chất trung gian B": {"Chất trung gian D": 1, "Nuciferine": 6},
-            "Chất trung gian C": {"Nuciferine": 2},
-            "Chất trung gian D": {"Nuciferine": 1},
-            "Nuciferine": {}
-        }
+    # Thuật toán động học Pseudo-second-order: Qt = (k2 * Qe^2 * t) / (1 + k2 * Qe * t)
+    qt_values = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
 
-        start_node = st.selectbox("1. Chọn nguyên liệu đầu vào:", list(chemical_graph.keys()))
-        target_node = "Nuciferine"
-        st.disabled(st.text_input("2. Hợp chất mục tiêu cần tổng hợp:", value=target_node))
+    if st.button("📊 KÍCH HOẠT MÔ PHỎNG TIẾN TRÌNH", use_container_width=True):
+        # Đóng gói dữ liệu vào DataFrame
+        df_kinetics = pd.DataFrame({
+            "Thời gian (Phút)": time_steps,
+            "Nồng độ chiết được (mg/g)": qt_values
+        })
 
-        if st.button("🚀 TÌM LỘ TRÌNH TỐI ƯU (DIJKSTRA)", use_container_width=True):
-            # Cài đặt thuật toán Dijkstra thuần túy
-            import heapq
-            
-            queue = [(0, start_node, [start_node])]
-            visited = set()
-            shortest_path = None
-            min_cost = float('inf')
+        # Vẽ đường cong động học bằng Plotly
+        fig = px.line(df_kinetics, x="Thời gian (Phút)", y="Nồng độ chiết được (mg/g)",
+                      title="Đường cong Động học Chiết tách Alkaloid theo Thời gian",
+                      color_discrete_sequence=["#FF4B4B"], template="plotly_white")
+        
+        # Thêm đường nét đứt biểu diễn giới hạn bão hòa tối đa Qe
+        fig.add_hline(y=qe, line_dash="dash", line_color="red", annotation_text="Giới hạn bão hòa tối đa (Qe)")
+        st.plotly_chart(fig, use_container_width=True)
 
-            while queue:
-                (cost, current, path) = heapq.heappop(queue)
-                
-                if current in visited:
-                    continue
-                visited.add(current)
-
-                if current == target_node:
-                    if cost < min_cost:
-                        min_cost = cost
-                        shortest_path = path
-                    break
-
-                for neighbor, weight in chemical_graph.get(current, {}).items():
-                    if neighbor not in visited:
-                        heapq.heappush(queue, (cost + weight, neighbor, path + [neighbor]))
-
-            # Hiển thị kết quả tìm kiếm đồ thị
-            if shortest_path:
-                st.markdown("### 📊 Chuỗi phản ứng được đề xuất:")
-                
-                # Tạo chuỗi mũi tên trực quan
-                visual_path = " ➡️ ".join([f"**[{node}]**" for node in shortest_path])
-                st.info(visual_path)
-                
-                st.metric(label="Tổng chi phí / Độ phức tạp ước tính", value=f"{min_cost} đơn vị")
-                st.success("✔️ Giải thuật Dijkstra đã xác nhận đây là lộ trình ngắn nhất, giúp tối ưu hóa thời gian phòng thí nghiệm và giảm thiểu tạp chất phát sinh!")
-            else:
-                st.warning("❌ Không tìm thấy lộ trình phản ứng khả thi giữa hai chất này trong cơ sở dữ liệu hiện tại.")
+        # Tính toán thời điểm phân tử đạt 90% trạng thái bão hòa (t_90 = 9 / (k2 * Qe))
+        t_90 = 9 / (k2 * qe)
+        
+        st.markdown("### 📋 Phân tích kết quả mô phỏng:")
+        st.info(f"⏳ **Thời gian tối ưu:** Dựa trên hằng số vận tốc thực nghiệm, hệ thống tính toán quá trình chiết tách đạt **90%** độ bão hòa tại thời điểm **{int(t_90)} phút**.")
+        st.success(f"💡 **Khuyến nghị:** Ông nên dừng quá trình ngâm khuấy hoặc thực hiện thay mẻ dung môi mới sau **{int(t_90 + 10)} phút** để tối ưu hóa thời gian vận hành máy móc và tránh làm phân hủy các Alkaloid nhạy cảm với nhiệt!")

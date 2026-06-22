@@ -23,8 +23,9 @@
   },
   "portsAttributes": {
     "8501": {
-      "label": "Application",
-      "onAutoForward": "openPreview"
+      "label": "AlkaLotus Web App",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
     }
   },
   "forwardPorts": [
