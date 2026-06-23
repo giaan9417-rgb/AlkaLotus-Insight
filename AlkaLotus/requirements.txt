@@ -8,3 +8,4 @@ scikit-learn
 numpy
 ipywidgets
 ipython_genutils
+rdkit
