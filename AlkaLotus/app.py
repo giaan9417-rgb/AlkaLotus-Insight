@@ -484,7 +484,7 @@ elif page == "4. Phân tích Cấu trúc (Toán)":
     from rdkit import DataStructs
     from rdkit.Chem import AllChem
 
-    st.title("🧬 Module 4: Phân tích đồng dạng cấu trúc (In Silico)")
+
     st.caption("Ứng dụng thuật toán **Tanimoto Similarity** và **Morgan Fingerprints** để định danh cấu trúc phân tử.")
 
     # 1. Cơ sở lý thuyết khoa học
