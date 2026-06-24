@@ -571,17 +571,22 @@ elif page == "5. Tối ưu Dung môi (Toán)":
             for s, w in weights.items():
                 mix_hsp += np.array(solvents[s]) * w
             
-            # Tính Ra
+            # 3. Tính toán Khoảng cách Hansen (Ra) chuẩn xác
             dist = np.sqrt(4*(mix_hsp[0]-t_hsp[0])**2 + (mix_hsp[1]-t_hsp[1])**2 + (mix_hsp[2]-t_hsp[2])**2)
-            score = max(0, 100 - (dist * 2))
+            
+            # --- CÔNG THỨC KHOA HỌC CHUẨN (HÀM GAUSSIAN) ---
+            # R0 là bán kính tương tác giả định của hợp chất mục tiêu (~8.0 units)
+            R0 = 8.0 
+            score = 100 * np.exp(- (dist**2) / (2 * (R0/2)**2))
+            # ------------------------------------------------
 
             # 4. Hiển thị kết quả
             st.divider()
             c1, c2 = st.columns(2)
-            c1.metric("Khoảng cách Ra", f"{dist:.2f}", help="Khoảng cách Hansen (Ra) càng nhỏ, dung môi càng hòa tan tốt Alkaloid.")
+            c1.metric("Khoảng cách Ra", f"{dist:.2f}", help="Khoảng cách Hansen (Ra) càng nhỏ, độ tương thích càng cao.")
             c2.metric("Chỉ số hòa tan", f"{score:.1f}%")
 
-            # 5. Đồ thị Radar (Dễ hiểu hơn 3D)
+            # 5. Đồ thị Radar (Phân tích chuyên sâu)
             st.subheader("📊 Phân tích độ tương thích (Hansen Profile)")
             radar_df = pd.DataFrame({
                 'Thông số': ['Dispersion (dD)', 'Polar (dP)', 'H-Bond (dH)'],
@@ -594,14 +599,14 @@ elif page == "5. Tối ưu Dung môi (Toán)":
                                 line_close=True, markers=True, template="plotly_white")
             fig.update_traces(fill='toself')
             st.plotly_chart(fig, use_container_width=True)
-            st.caption("💡 **Nhận xét:** Nếu diện tích hình 'Hỗn hợp' chồng khít lên hình 'Mục tiêu', bạn đã đạt được tỷ lệ dung môi tối ưu.")
+            st.caption("💡 **Nhận xét:** Diện tích hình 'Hỗn hợp' càng gần với 'Mục tiêu' thì độ tan càng lý tưởng.")
 
             # 6. Lời khuyên thông minh
             if score > 80:
                 st.balloons()
                 st.success(f"🎉 **Tối ưu:** Tỷ lệ này cực kỳ phù hợp để chiết xuất {target_alkaloid}!")
-            elif score < 50:
-                st.error("⚠️ **Cần điều chỉnh:** Độ tan quá thấp. Hãy thử thay đổi tỷ lệ hoặc thêm/bớt dung môi khác để đưa các chỉ số khớp với mục tiêu.")
+            elif score < 40:
+                st.error("⚠️ **Cần điều chỉnh:** Dung môi hiện tại quá xa so với mục tiêu. Hãy thử thay đổi tỷ lệ hoặc loại dung môi khác.")
 # ==================== MODULE 6: MÔ PHỎNG ĐỘNG HỌC CHIẾT TÁCH (TOÁN ĐỒ THỊ) ====================
 elif page == "6. Động học Chiết tách (Toán)":
     st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
