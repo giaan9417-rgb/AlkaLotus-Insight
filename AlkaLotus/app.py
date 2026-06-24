@@ -632,6 +632,16 @@ elif page == "5. Tối ưu Dung môi (Toán)":
             elif score < 40:
                 st.error("⚠️ **Cần điều chỉnh:** Dung môi hiện tại quá xa so với mục tiêu. Hãy thử thay đổi tỷ lệ hoặc loại dung môi khác.")
 elif page == "6. Động học Chiết tách (Toán)":
+    with st.sidebar:
+        st.header("📖 Hướng dẫn Module 6")
+        st.info("""
+        **Mục tiêu:** Mô phỏng quá trình chiết tách bằng mô hình toán học Pseudo-second-order.
+        
+        **Các bước thực hiện:**
+        1. **Thiết lập thông số:** Thay đổi Qe (dung lượng cực đại) và k2 (tốc độ chiết) từ bảng điều khiển bên trái.
+        2. **Quan sát biểu đồ:** Xem đường cong nồng độ tăng dần theo thời gian.
+        3. **Xác định t90:** Xem thời gian tối ưu để đạt 90% hiệu suất, giúp tiết kiệm thời gian và năng lượng vận hành.
+        """)
     st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
     st.markdown("Sử dụng mô hình **Pseudo-second-order** để tối ưu hóa thời gian chiết xuất dược liệu.")
 
