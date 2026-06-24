@@ -478,6 +478,16 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     st.table(pd.DataFrame(real_data))
 
 elif page == "4. Phân tích Cấu trúc (Toán)":
+    with st.sidebar:
+        st.header("📖 Hướng dẫn Module 4")
+        st.info("""
+        **Mục tiêu:** Đánh giá độ tương đồng giữa các phân tử bằng thuật toán Tanimoto Similarity.
+        
+        **Các bước thực hiện:**
+        1. **Chọn tham chiếu:** Chọn 1 phân tử làm gốc để so sánh với toàn bộ thư viện.
+        2. **Điều chỉnh ngưỡng:** Kéo thanh trượt để lọc các phân tử có độ tương đồng mong muốn.
+        3. **Biện luận SAR:** Xem bảng ma trận để xác định các cặp phân tử có cấu trúc gần gũi nhất.
+        """)
     from rdkit import Chem
     from rdkit import DataStructs
     from rdkit.Chem import AllChem
