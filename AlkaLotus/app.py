@@ -477,20 +477,15 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     }
     st.table(pd.DataFrame(real_data))
 
-# ==================== MODULE 4: PHÂN TÍCH CẤU TRÚC (TANIMOTO) ====================
 elif page == "4. Phân tích Cấu trúc (Toán)":
     from rdkit import Chem
     from rdkit import DataStructs
     from rdkit.Chem import AllChem
 
-    st.title("🧬 Phân tích Cấu trúc Phân tử")
-    st.caption("Ứng dụng thuật toán **Tanimoto Similarity** và **Morgan Fingerprints** để định danh cấu trúc.")
+    st.title("🧬 Phân tích Độ tương đồng Cấu trúc")
+    st.markdown("Sử dụng thuật toán **Tanimoto Similarity** để phân tích mối quan hệ cấu trúc - hoạt tính (SAR).")
 
-    # 1. Cơ sở lý thuyết
-    st.latex(r"T(A, B) = \frac{|A \cap B|}{|A| + |B| - |A \cap B|}")
-    st.info("💡 Chỉ số Tanimoto ($T \in [0, 1]$) dùng để so sánh các phân tử dựa trên cấu trúc nhánh (Fingerprints).")
-
-    # 2. Dữ liệu cấu trúc (SMILES) đã được kiểm chứng
+    # 1. Cơ sở dữ liệu SMILES
     alkaloids = {
         "Nuciferine": "CN(C)CCC1=CC2=C(C=C1)C3=C(CC2)C=CC(=C3)OC",
         "Nornuciferine": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC", 
@@ -498,42 +493,38 @@ elif page == "4. Phân tích Cấu trúc (Toán)":
         "Liensinine": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"
     }
 
-    # 3. Xử lý thuật toán có kiểm tra lỗi
-    fps = {}
-    valid_names = []
+    # 2. Xử lý Fingerprints
+    fps = {name: AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smi), 2, nBits=1024) 
+           for name, smi in alkaloids.items()}
+    names = list(fps.keys())
+
+    # 3. Tính năng so sánh tương tác
+    st.subheader("🎛️ Bộ lọc so sánh")
+    col1, col2 = st.columns(2)
+    with col1:
+        ref_mol = st.selectbox("Chọn phân tử tham chiếu:", names)
+    with col2:
+        threshold = st.slider("Ngưỡng tương đồng (Tanimoto cutoff):", 0.0, 1.0, 0.3)
+
+    # 4. Tính toán so sánh
+    similarities = {name: DataStructs.TanimotoSimilarity(fps[ref_mol], fps[name]) for name in names}
+    df_sim = pd.DataFrame.from_dict(similarities, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
+
+    # 5. Trực quan hóa kết quả (Bar Chart)
+    fig = px.bar(df_sim, x=df_sim.index, y='Score', color='Score', 
+                 color_continuous_scale='Viridis', title=f"Độ tương đồng với {ref_mol}")
+    fig.add_hline(y=threshold, line_dash="dash", line_color="red")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 6. Biện luận SAR thông minh
+    st.subheader("🔍 Phân tích SAR (Structure-Activity Relationship)")
+    matches = df_sim[df_sim['Score'] >= threshold]
+    st.write(f"- Có **{len(matches)-1}** phân tử khác có cấu trúc tương đồng với {ref_mol} trên ngưỡng {threshold}.")
     
-    for name, smi in alkaloids.items():
-        mol = Chem.MolFromSmiles(smi)
-        if mol is not None:
-            fps[name] = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
-            valid_names.append(name)
-        else:
-            st.error(f"Lỗi đọc cấu trúc: {name}")
-
-    if len(valid_names) > 1:
-        # 4. Tính toán ma trận
-        matrix = np.zeros((len(valid_names), len(valid_names)))
-        for i in range(len(valid_names)):
-            for j in range(len(valid_names)):
-                matrix[i, j] = DataStructs.TanimotoSimilarity(fps[valid_names[i]], fps[valid_names[j]])
-
-        df_matrix = pd.DataFrame(matrix, index=valid_names, columns=valid_names)
-
-        # 5. Trực quan hóa
-        st.subheader("📊 Ma trận tương đồng Tanimoto")
-        fig = px.imshow(df_matrix, text_auto=".2f", color_continuous_scale="Greens")
-        st.plotly_chart(fig, use_container_width=True)
-
-        # 6. Biện luận
-        st.markdown("### 🔍 Phân tích định hướng (SAR Analysis):")
-        # Tính max trên tam giác trên (loại bỏ đường chéo 1.0)
-        upper_tri_indices = np.triu_indices(len(valid_names), k=1)
-        if len(upper_tri_indices[0]) > 0:
-            max_sim = matrix[upper_tri_indices].max()
-            st.write(f"- Độ tương đồng cao nhất ghi nhận được: **{max_sim:.2f}**.")
-            st.success("Cấu trúc các hợp chất có sự bảo tồn Pharmacophore, giúp duy trì khả năng ức chế enzyme.")
-    else:
-        st.warning("Không đủ dữ liệu hợp lệ để tính toán ma trận.")
+    # Hiển thị bảng ma trận phụ
+    with st.expander("📊 Xem ma trận tương đồng chi tiết"):
+        matrix = [[DataStructs.TanimotoSimilarity(fps[a], fps[b]) for b in names] for a in names]
+        st.dataframe(pd.DataFrame(matrix, index=names, columns=names).style.background_gradient(cmap="Greens"))
 
 
 elif page == "5. Tối ưu Dung môi (Toán)":
