@@ -550,6 +550,17 @@ elif page == "4. Phân tích Cấu trúc (Toán)":
         st.error("Không đủ dữ liệu cấu trúc hợp lệ để thực hiện phân tích.")
 
 elif page == "5. Tối ưu Dung môi (Toán)":
+    with st.sidebar:
+        st.header("📖 Hướng dẫn Module 5")
+        st.info("""
+        **Mục tiêu:** Dự đoán độ tan của Alkaloid trong hỗn hợp dung môi dựa trên lý thuyết Hansen.
+        
+        **Các bước thực hiện:**
+        1. **Chọn Alkaloid:** Chọn đối tượng cần chiết xuất.
+        2. **Chọn dung môi:** Chọn các dung môi muốn phối trộn.
+        3. **Điều chỉnh tỷ lệ:** Sử dụng thanh trượt để thay đổi phần trăm từng dung môi.
+        4. **Đọc chỉ số:** Ra càng gần 0 và chỉ số hòa tan > 80% là hỗn hợp tối ưu.
+        """)
     st.title("🧪 Hệ thống Tối ưu hóa Dung môi Hansen")
     st.markdown("Sử dụng **Khoảng cách Hansen (Hansen Solubility Parameters - HSP)** để dự đoán độ tan Alkaloid trong hỗn hợp dung môi đa thành phần.")
 
