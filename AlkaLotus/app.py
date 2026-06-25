@@ -13,7 +13,7 @@ from utils import fetch_pdb, render_3d_molecule, check_lipinski, create_admet_ra
 
 # --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
-    page_title="AlkaLotus Predictor | Alzheimer Research",
+    page_title="AlkaLotus Insight | Alzheimer Research",
     layout="wide",
     page_icon="🪷",
     initial_sidebar_state="expanded"
@@ -77,7 +77,7 @@ if 'visited' not in st.session_state:
                 <div class="leaf" style="left: 15%; animation-delay: 0s;">🍃</div>
                 <div class="leaf" style="left: 80%; animation-delay: 1.5s;">🍃</div>
                 <div class="main-icons">🪷 🧬</div>
-                <div class="lotus-text">NỀN TẢNG TIN SINH HỌC TÍCH HỢP DỮ LIỆU VÀ MÔ PHỎNG ĐỘNG HỌC ALKALOTUS PREDICTOR</div>
+                <div class="lotus-text">NỀN TẢNG TIN SINH HỌC TÍCH HỢP DỮ LIỆU VÀ MÔ PHỎNG ĐỘNG HỌC AlkaLotus Insight</div>
             </div>
             """, 
             unsafe_allow_html=True 
@@ -87,7 +87,7 @@ if 'visited' not in st.session_state:
     st.session_state['visited'] = True
 
 
-st.title("🪷 AlkaLotus Predictor")
+st.title("🪷 AlkaLotus Insight")
 st.markdown("<p style='font-size: 1.15em; color: #555; font-style: italic; margin-top: -15px; line-height: 1.4;'>Nền tảng tin sinh học tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong điều trị Alzheimer</p>", unsafe_allow_html=True)
 st.divider()
 
@@ -142,7 +142,7 @@ st.sidebar.markdown(
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 st.sidebar.divider()
 
-st.sidebar.title("🪷 ALKALOTUS PREDICTOR")
+st.sidebar.title("🪷 AlkaLotus Insight")
 st.sidebar.markdown("<div style='text-align: justify; font-size: 0.9em;'><b>Nền tảng tin sinh học</b>  tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong điều trị Alzheimer.</div>", unsafe_allow_html=True)
 
 st.sidebar.divider()
