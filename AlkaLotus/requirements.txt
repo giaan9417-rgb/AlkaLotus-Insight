@@ -10,3 +10,4 @@ ipywidgets
 ipython_genutils
 rdkit
 matplotlib
+starlette==0.37.2
