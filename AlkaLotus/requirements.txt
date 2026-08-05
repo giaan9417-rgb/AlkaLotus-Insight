@@ -10,5 +10,5 @@ ipywidgets
 ipython_genutils
 rdkit
 matplotlib
-fastapi==0.111.0
 starlette==0.37.2
+fastapi==0.111.0
