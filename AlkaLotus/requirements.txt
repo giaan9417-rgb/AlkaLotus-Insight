@@ -1,4 +1,4 @@
-streamlit
+streamlit==1.32.2
 pandas
 stmol
 py3Dmol
@@ -10,5 +10,4 @@ ipywidgets
 ipython_genutils
 rdkit
 matplotlib
-starlette==0.37.2
-fastapi==0.111.0
+starlette==0.36.3
