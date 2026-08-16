@@ -8,7 +8,7 @@ import plotly.express as px
 from stmol import showmol
 from data import get_database
 from utils import fetch_pdb, render_3d_molecule, check_lipinski, create_admet_radar, classify_potential
-
+from scipy.optimize import minimize
 
 
 # --- 1. CẤU HÌNH TRANG ---
@@ -688,3 +688,67 @@ elif page == "6. Động học Chiết tách (Toán)":
     })
     # Hiển thị bảng với format số thập phân gọn gàng
     st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
+    # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
+elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
+    with st.sidebar:
+        st.header("📖 Hướng dẫn Module 7")
+        st.info("""
+        **Mục tiêu:** Mô phỏng bài toán kinh tế và tự động tối ưu hóa chi phí sản xuất hoạt chất Alkaloid từ lá sen.
+        
+        **Các bước thực hiện:**
+        1. **Nhập liệu thị trường:** Cập nhật giá nguyên liệu, dung môi và điện năng.
+        2. **Giới hạn vận hành:** Tùy chỉnh quy mô mẻ chiết (khối lượng lá, thể tích dung môi).
+        3. **Chạy tối ưu hóa:** Sử dụng thuật toán Scipy để tìm ra thông số cấu hình mang lại chi phí thấp nhất và lợi nhuận cao nhất.
+        """)
+        
+    st.title("7. Dự toán Quy mô & Kinh tế (Toán)")
+    st.markdown("Mô phỏng và tự động tối ưu hóa chi phí sản xuất hoạt chất Alkaloid từ lá sen bằng thuật toán toán học.")
+
+    col_in1, col_in2 = st.columns(2)
+    with col_in1:
+        st.subheader("Thông số Đầu vào (Thị trường)")
+        price_leaf = st.number_input("Giá lá sen khô (VNĐ/kg)", value=50000, step=5000)
+        price_solvent = st.number_input("Giá dung môi tối ưu (VNĐ/Lít)", value=35000, step=2000)
+        price_elec = st.number_input("Giá điện (VNĐ/kWh)", value=2500, step=100)
+
+    with col_in2:
+        st.subheader("Thông số Giới hạn Vận hành")
+        
+        scale_leaf = st.slider("Khoảng quy mô mẻ chiết (kg lá)", 1, 50, (1, 50))
+        st.caption("📌 **Quy mô mẻ:** Giới hạn khối lượng nguyên liệu lá sen khô đầu vào cho một lần chiết xuất, giúp thuật toán tìm ra giá trị phù hợp với công suất thiết bị thực tế.")
+        
+        vol_solvent = st.slider("Khoảng thể tích dung môi (Lít)", 10, 200, (10, 200))
+        st.caption("📌 **Thể tích dung môi:** Khoảng giới hạn lượng dung môi cấp vào bình. Thông số này trực tiếp chi phối chi phí dung môi và điện năng tiêu thụ cho hệ thống khuấy/gia nhiệt.")
+        
+        recovery_eff = st.slider("Hiệu suất thu hồi trung bình (%)", 0.5, 2.0, 1.2, step=0.1)
+        st.caption("📌 **Hiệu suất thu hồi:** Tỷ lệ phần trăm chuyển hóa hoạt chất từ nguyên liệu thô ra dung dịch, dùng làm hệ số quy đổi để dự báo hàm lượng (mg) thu được.")
+
+    st.divider()
+    st.subheader("⚙️ Tối ưu hóa tự động bằng Scipy")
+    
+    if st.button("🚀 Chạy thuật toán tối ưu hóa kinh tế"):
+        def objective(x):
+            m, v = x
+            elec_kwh = v * 0.15 
+            total_cost = m * price_leaf + v * price_solvent + elec_kwh * price_elec
+            return total_cost
+
+        bounds = [scale_leaf, vol_solvent]
+        
+        res = minimize(objective, x0=[(scale_leaf[0]+scale_leaf[1])/2, (vol_solvent[0]+vol_solvent[1])/2], bounds=bounds, method='L-BFGS-B')
+        
+        if res.success:
+            opt_m, opt_v = res.x
+            opt_cost = res.fun
+            est_output_mg = opt_m * recovery_eff * 15 
+            
+            st.success("🎉 Tối ưu hóa thành công!")
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Khối lượng lá tối ưu", f"{opt_m:.2f} kg")
+            m2.metric("Thể tích dung môi tối ưu", f"{opt_v:.2f} Lít")
+            m3.metric("Tổng chi phí ước tính", f"{opt_cost:,.0f} VNĐ")
+            
+            st.info(f"💡 **Khuyến nghị vận hành:** Để đạt lượng hoạt chất ước tính **{est_output_mg:.1f} mg** với chi phí tối ưu nhất, hệ thống cần cấu hình **{opt_m:.1f} kg** lá sen khô ngâm trong **{opt_v:.1f} lít** dung môi.")
+        else:
+            st.warning("⚠️ Thuật toán không hội tụ trong giới hạn cho phép. Vui lòng nới lỏng các thanh trượt thông số.")
