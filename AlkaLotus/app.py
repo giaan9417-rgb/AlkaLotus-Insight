@@ -688,21 +688,20 @@ elif page == "6. Động học Chiết tách (Toán)":
     })
     # Hiển thị bảng với format số thập phân gọn gàng
     st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
-   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
+   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 7")
         st.info("""
-        **Mục tiêu:** Mô phỏng bài toán kinh tế và tự động tối ưu hóa chi phí sản xuất hoạt chất Alkaloid từ lá sen.
+        **Mục tiêu:** Mô phỏng bài toán kinh tế và tối ưu hóa chi phí sản xuất hoạt chất Alkaloid dưới ràng buộc khắt khe về sản lượng thu hồi.
         
-        **Các bước thực hiện:**
-        1. **Nhập liệu thị trường:** Cập nhật giá nguyên liệu, dung môi và điện năng.
-        2. **Giới hạn vận hành:** Tùy chỉnh quy mô mẻ chiết (khối lượng lá, thể tích dung môi).
-        3. **Chạy tối ưu hóa:** Sử dụng thuật toán Scipy để tìm ra thông số cấu hình mang lại chi phí thấp nhất và lợi nhuận cao nhất.
+        **Điểm nổi bật:**
+        - Tích hợp dữ liệu từ Module 6 (Động học).
+        - Sử dụng thuật toán tối ưu hóa phi tuyến có ràng buộc (`SLSQP`).
         """)
         
-    st.title("7. Dự toán Quy mô & Kinh tế (Toán)")
-    st.markdown("Mô phỏng và tự động tối ưu hóa chi phí sản xuất hoạt chất Alkaloid từ lá sen bằng thuật toán toán học.")
+    st.title("7. Dự toán Quy mô & Kinh tế & Tối ưu hóa (Toán)")
+    st.markdown("Hệ thống tối ưu hóa chi phí sản xuất tự động dưới ràng buộc đảm bảo hàm lượng hoạt chất đầu ra.")
 
     col_in1, col_in2 = st.columns(2)
     with col_in1:
@@ -710,43 +709,55 @@ elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
         price_leaf = st.number_input("Giá lá sen khô (VNĐ/kg)", value=50000, step=5000)
         price_solvent = st.number_input("Giá dung môi tối ưu (VNĐ/Lít)", value=35000, step=2000)
         price_elec = st.number_input("Giá điện (VNĐ/kWh)", value=2500, step=100)
+        target_yield_mg = st.number_input("Mức hoạt chất tối thiểu cần đạt (mg)", value=500.0, step=50.0)
 
     with col_in2:
         st.subheader("Thông số Giới hạn Vận hành")
         
         scale_leaf = st.slider("Khoảng quy mô mẻ chiết (kg lá)", 1, 50, (1, 50))
-        st.caption("📌 **Quy mô mẻ:** Giới hạn khối lượng nguyên liệu lá sen khô đầu vào cho một lần chiết xuất, giúp thuật toán tìm ra giá trị phù hợp với công suất thiết bị thực tế.")
+        st.caption("📌 **Quy mô mẻ:** Giới hạn khối lượng nguyên liệu lá sen khô đầu vào cho một lần chiết xuất.")
         
         vol_solvent = st.slider("Khoảng thể tích dung môi (Lít)", 10, 200, (10, 200))
-        st.caption("📌 **Thể tích dung môi:** Khoảng giới hạn lượng dung môi cấp vào bình. Thông số này trực tiếp chi phối chi phí dung môi và điện năng tiêu thụ cho hệ thống khuấy/gia nhiệt.")
+        st.caption("📌 **Thể tích dung môi:** Khoảng giới hạn lượng dung môi cấp vào bình chiết.")
         
         recovery_eff = st.slider("Hiệu suất thu hồi trung bình (%)", 0.5, 2.0, 1.2, step=0.1)
-        st.caption("📌 **Hiệu suất thu hồi:** Tỷ lệ phần trăm chuyển hóa hoạt chất từ nguyên liệu thô ra dung dịch, dùng làm hệ số quy đổi để dự báo hàm lượng (mg) thu được.")
+        st.caption("📌 **Hiệu suất thu hồi:** Tỷ lệ chuyển hóa hoạt chất kế thừa từ mô hình động học Module 6.")
 
     st.divider()
-    st.subheader("⚙️ Tối ưu hóa tự động bằng Scipy")
+    st.subheader("⚙️ Tối ưu hóa phi tuyến có ràng buộc (SciPy - SLSQP)")
     
-    if st.button("🚀 Chạy thuật toán tối ưu hóa kinh tế"):
+    if st.button("🚀 Chạy thuật toán tối ưu hóa kinh tế & ràng buộc"):
+        # Hàm mục tiêu cần cực tiểu hóa (Chi phí)
         def objective(x):
             m, v = x
             elec_kwh = v * 0.15 
-            total_cost = m * price_leaf + v * price_solvent + elec_kwh * price_elec
-            return total_cost
+            return (m * price_leaf) + (v * price_solvent) + (elec_kwh * price_elec)
+
+        # Ràng buộc bất đẳng thức: Y(m, v) >= target_yield_mg
+        # tương đương với: (m * recovery_eff * 15) - target_yield_mg >= 0
+        constraints = {
+            'type': 'ineq', 
+            'fun': lambda x: (x[0] * recovery_eff * 15) - target_yield_mg
+        }
 
         bounds = [scale_leaf, vol_solvent]
+        x0 = [(scale_leaf[0] + scale_leaf[1]) / 2, (vol_solvent[0] + vol_solvent[1]) / 2]
         
-        res = minimize(objective, x0=[(scale_leaf[0]+scale_leaf[1])/2, (vol_solvent[0]+vol_solvent[1])/2], bounds=bounds, method='L-BFGS-B')
+        # Sử dụng phương pháp SLSQP để giải quyết bài toán tối ưu có ràng buộc
+        res = minimize(objective, x0=x0, method='SLSQP', bounds=bounds, constraints=constraints)
         
         if res.success:
             opt_m, opt_v = res.x
             opt_cost = res.fun
             est_output_mg = opt_m * recovery_eff * 15 
             
-            st.success("🎉 Tối ưu hóa thành công!")
+            st.success("🎉 Tối ưu hóa thành công dưới ràng buộc sản lượng!")
             
             m1, m2, m3 = st.columns(3)
             m1.metric("Khối lượng lá tối ưu", f"{opt_m:.2f} kg")
             m2.metric("Thể tích dung môi tối ưu", f"{opt_v:.2f} Lít")
-            m3.metric("Tổng chi phí ước tính", f"{opt_cost:,.0f} VNĐ")
+            m3.metric("Tổng chi phí tối thiểu", f"{opt_cost:,.0f} VNĐ")
             
-            st.info(f"💡 **Khuyến nghị vận hành:** Để đạt lượng hoạt chất ước tính **{est_output_mg:.1f} mg** với chi phí tối ưu nhất, hệ thống cần cấu hình **{opt_m:.1f} kg** lá sen khô ngâm trong **{opt_v:.1f} lít** dung môi.")
+            st.info(f"💡 **Khuyến nghị vận hành chuẩn hóa:** Để đảm bảo đạt sản lượng yêu cầu tối thiểu **{target_yield_mg:.1f} mg** (thực tế thu được **{est_output_mg:.1f} mg**) với chi phí thấp nhất, hệ thống tự động đề xuất cấu hình: **{opt_m:.1f} kg** lá sen khô và **{opt_v:.1f} lít** dung môi.")
+        else:
+            st.warning("⚠️ Không tìm thấy nghiệm thỏa mãn (Miền khả thi rỗng). Có thể mức sản lượng yêu cầu quá cao so với giới hạn quy mô lá hoặc hiệu suất hiện tại. Vui lòng nới lỏng ràng buộc hoặc tăng quy mô mẻ chiết.")
