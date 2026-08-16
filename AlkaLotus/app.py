@@ -112,30 +112,27 @@ if 'selected_compound' not in st.session_state:
 # --- 5. SIDEBAR ---
 st.sidebar.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
 
-logo_paths = [
-    "AlkaLotus/Logo_HungVuong.png.png", 
-    "Logo_HungVuong.png.png",
-    "AlkaLotus/Logo_HungVuong.png",
-    "Logo_HungVuong.png"
-]
+logo_path = "AlkaLotus/logo.png"
 
-logo_found = False
-for path in logo_paths:
-    if os.path.exists(path):
-        st.sidebar.image(path, width=130)
-        logo_found = True
-        break
+if os.path.exists(logo_path):
+    st.sidebar.image(logo_path, width=250)
+else:
+    # Dự phòng nếu chạy từ bên trong thư mục AlkaLotus/
+    alt_path = "logo.png"
+    if os.path.exists(alt_path):
+        st.sidebar.image(alt_path, width=130)
+    else:
+        st.sidebar.error("Không tìm thấy tệp logo!")
 
-if not logo_found:
-    github_logo_url = "https://raw.githubusercontent.com/giaan9417-rgb/AlkaLotus-Predictor/main/AlkaLotus/Logo_HungVuong.png.png"
-    st.sidebar.image(github_logo_url, width=130)
+st.sidebar.markdown("</div>", unsafe_allow_html=True)
+st.sidebar.divider()
 
 st.sidebar.markdown(
     """
     <p style='font-size: 1em; font-weight: bold; color: #2E2E2E; margin-top: 5px; margin-bottom: 0px;'>
-        Trường THPT Chuyên Hùng Vương
+        ALKALOTUS INSIGHT
     </p>
-    <p style='font-size: 0.8em; color: #666;'>TP. HỒ CHÍ MINH</p>
+    <p style='font-size: 0.8em; color: #666;'>DỰ ÁN NGHIÊN CỨU KHOA HỌC NỀN TẢNG TIN SINH HỌC</p>
     """, 
     unsafe_allow_html=True
 )
@@ -159,8 +156,8 @@ page = st.sidebar.radio(
     ]
 )
 st.sidebar.divider()
-st.sidebar.caption("👨‍ Học sinh: **Quách Gia An & Nguyễn Lê Bách Hợp**")
-st.sidebar.caption("🏫 Đơn vị: **Lớp 10-K30 - THPT Chuyên Hùng Vương**")
+st.sidebar.caption("👨‍ Học sinh: **Quách Gia An**")
+st.sidebar.caption("🏫 Đơn vị: **Chuyên sử Khóa 30 - THPT Chuyên Hùng Vương**")
 
 # --- 6. MODULE 1: DATABASE EXPLORER (BẢN NÂNG CẤP) ---
 if page == "1. Thư viện Alkaloid":
@@ -423,8 +420,8 @@ if page == "3. Phân tích & Xuất báo cáo":
              BÁO CÁO PHÂN TÍCH DƯỢC TÍNH PHÂN TỬ - ALKALOTUS PREDICTOR
 ======================================================================
 Dự án: Nghiên cứu In Silico dẫn xuất Alkaloid từ lá sen điều trị Alzheimer
-Tác giả: Quách Gia An - Nguyễn Lê Bách Hợp
-Đơn vị: Lớp 10-K30 - Trường THPT Chuyên Hùng Vương
+Tác giả: Quách Gia An
+Đơn vị: Lớp 10 chuyên Sử khóa 30 - Trường THPT Chuyên Hùng Vương
 Thời gian trích xuất: {current_time}
 
 ----------------------------------------------------------------------
@@ -689,7 +686,7 @@ elif page == "6. Động học Chiết tách (Toán)":
     })
     # Hiển thị bảng với format số thập phân gọn gàng
     st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
-    # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
+   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 7")
