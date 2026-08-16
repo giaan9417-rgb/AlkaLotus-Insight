@@ -688,7 +688,7 @@ elif page == "6. Động học Chiết tách (Toán)":
     })
     # Hiển thị bảng với format số thập phân gọn gàng
     st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
-   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC) ---
+  # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC & PHÂN TÍCH CHI PHÍ) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 7")
@@ -751,12 +751,24 @@ elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
             opt_cost = res.fun
             est_output_mg = opt_m * recovery_eff * 15 
             
+            # Tính toán chi tiết cấu thành chi phí để báo cáo chuyên sâu
+            cost_leaf_val = opt_m * price_leaf
+            cost_solvent_val = opt_v * price_solvent
+            cost_elec_val = (opt_v * 0.15) * price_elec
+            
             st.success("🎉 Tối ưu hóa thành công dưới ràng buộc sản lượng!")
             
             m1, m2, m3 = st.columns(3)
             m1.metric("Khối lượng lá tối ưu", f"{opt_m:.2f} kg")
             m2.metric("Thể tích dung môi tối ưu", f"{opt_v:.2f} Lít")
             m3.metric("Tổng chi phí tối thiểu", f"{opt_cost:,.0f} VNĐ")
+            
+            # Hiển thị thêm bảng bóc tách chi phí chuyên nghiệp
+            with st.expander("📊 Xem chi tiết cấu thành chi phí kinh tế-kỹ thuật"):
+                col_c1, col_c2, col_c3 = st.columns(3)
+                col_c1.metric("Chi phí Nguyên liệu lá", f"{cost_leaf_val:,.0f} VNĐ", f"{(cost_leaf_val/opt_cost)*100:.1f}%")
+                col_c2.metric("Chi phí Dung môi", f"{cost_solvent_val:,.0f} VNĐ", f"{(cost_solvent_val/opt_cost)*100:.1f}%")
+                col_c3.metric("Chi phí Điện năng", f"{cost_elec_val:,.0f} VNĐ", f"{(cost_elec_val/opt_cost)*100:.1f}%")
             
             st.info(f"💡 **Khuyến nghị vận hành chuẩn hóa:** Để đảm bảo đạt sản lượng yêu cầu tối thiểu **{target_yield_mg:.1f} mg** (thực tế thu được **{est_output_mg:.1f} mg**) với chi phí thấp nhất, hệ thống tự động đề xuất cấu hình: **{opt_m:.1f} kg** lá sen khô và **{opt_v:.1f} lít** dung môi.")
         else:
