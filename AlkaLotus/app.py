@@ -10,7 +10,6 @@ from data import get_database
 from utils import fetch_pdb, render_3d_molecule, check_lipinski, create_admet_radar, classify_potential
 from scipy.optimize import minimize
 
-
 # --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
     page_title="AlkaLotus Insight | Alzheimer Research",
@@ -154,7 +153,8 @@ page = st.sidebar.radio(
         "3. Phân tích & Xuất báo cáo",
         "4. Phân tích Cấu trúc (Toán)",
         "5. Tối ưu Dung môi (Toán)",
-        "6. Động học Chiết tách (Toán)"
+        "6. Động học Chiết tách (Toán)",
+        "7. Dự toán Quy mô & Kinh tế (Toán)"
     ]
 )
 st.sidebar.divider()
@@ -688,7 +688,7 @@ elif page == "6. Động học Chiết tách (Toán)":
     })
     # Hiển thị bảng với format số thập phân gọn gàng
     st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
-    # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
+   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 7")
@@ -750,5 +750,3 @@ elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
             m3.metric("Tổng chi phí ước tính", f"{opt_cost:,.0f} VNĐ")
             
             st.info(f"💡 **Khuyến nghị vận hành:** Để đạt lượng hoạt chất ước tính **{est_output_mg:.1f} mg** với chi phí tối ưu nhất, hệ thống cần cấu hình **{opt_m:.1f} kg** lá sen khô ngâm trong **{opt_v:.1f} lít** dung môi.")
-        else:
-            st.warning("⚠️ Thuật toán không hội tụ trong giới hạn cho phép. Vui lòng nới lỏng các thanh trượt thông số.")
