@@ -154,7 +154,8 @@ page = st.sidebar.radio(
         "3. Phân tích & Xuất báo cáo",
         "4. Phân tích Cấu trúc (Toán)",
         "5. Tối ưu Dung môi (Toán)",
-        "6. Động học Chiết tách (Toán)"
+        "6. Động học Chiết tách (Toán)",
+        "7. Dự toán Quy mô & Kinh tế (Toán)"
     ]
 )
 st.sidebar.divider()
