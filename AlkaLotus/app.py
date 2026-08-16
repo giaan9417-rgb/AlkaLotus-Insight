@@ -159,6 +159,7 @@ st.sidebar.divider()
 st.sidebar.caption("👨‍ Học sinh: **Quách Gia An**")
 st.sidebar.caption("🏫 Đơn vị: **Chuyên sử Khóa 30 - THPT Chuyên Hùng Vương**")
 
+
 # --- 6. MODULE 1: DATABASE EXPLORER (BẢN NÂNG CẤP) ---
 if page == "1. Thư viện Alkaloid":
     st.title("📚 Thư viện số hóa Alkaloid")
