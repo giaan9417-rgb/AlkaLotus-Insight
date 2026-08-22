@@ -466,16 +466,7 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
                        file_name=f"AlkaLotus_Report_{selected_data['Name']}.txt", 
                        mime="text/plain")
 
-    st.header("🔬 Kiểm chứng độ tin cậy mô hình (Validation)")
-    st.info("Bảng đối chiếu giữa kết quả dự đoán từ phần mềm và dữ liệu thực nghiệm lâm sàng từ các nguồn uy tín.")
-    real_data = {
-        "Hợp chất": ["Neferine", "Isoliensinine", "Liensinine", "Nuciferine"],
-        "Thực nghiệm (IC50)": ["2.16 µM", "5.45 µM", "6.08 µM", "45.20 µM"],
-        "Dự đoán AI (kcal/mol)": ["-10.2", "-9.1", "-8.9", "-7.8"],
-        "Độ tương quan": ["Khớp mạnh nhất ✅", "Chính xác ✅", "Chính xác ✅", "Chính xác ✅"],
-        "Nguồn": ["PMID: 25442253", "PMID: 25442253", "PMID: 25442253", "Elsevier 2015"]
-    }
-    st.table(pd.DataFrame(real_data))
+    
 
 elif page == "4. Phân tích Cấu trúc (Toán)":
     with st.sidebar:
