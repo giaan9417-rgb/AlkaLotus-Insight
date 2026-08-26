@@ -151,17 +151,17 @@ page = st.sidebar.radio(
         "1. Thư viện Alkaloid",
         "2. Mô phỏng Docking 3D",
         "3. Phân tích & Xuất báo cáo",
-        "4. Phân tích Cấu trúc (Toán)",
-        "5. Tối ưu Dung môi (Toán)",
-        "6. Động học Chiết tách (Toán)",
-        "7. Dự toán Quy mô & Kinh tế (Toán)"
+        "4. Phân tích cấu trúc (Toán)",
+        "5. Tối ưu dung môi (Toán)",
+        "6. Động học chiết tách (Toán)",
+        "7. Dự toán quy mô & kinh tế (Toán)"
     ]
 )
 st.sidebar.divider()
 st.sidebar.caption("👨‍ Học sinh: **Quách Gia An & Nguyễn Lê Bách Hợp**")
-st.sidebar.caption("🏫 Đơn vị: **Lớp 10-K30 - THPT Chuyên Hùng Vương**")
+st.sidebar.caption("🏫 Đơn vị: **Lớp 11-K30 - THPT Chuyên Hùng Vương**")
 
-# --- 6. MODULE 1: DATABASE EXPLORER (BẢN NÂNG CẤP) ---
+# --- 6. MODULE 1: DATABASE EXPLORER ---
 if page == "1. Thư viện Alkaloid":
     st.title("📚 Thư viện số hóa Alkaloid")
     
