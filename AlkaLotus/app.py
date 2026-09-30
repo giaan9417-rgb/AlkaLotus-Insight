@@ -158,7 +158,7 @@ page = st.sidebar.radio(
     ]
 )
 st.sidebar.divider()
-st.sidebar.caption("👨‍ Học sinh: **Quách Gia An & Nguyễn Lê Bách Hợp**")
+st.sidebar.caption("👨‍ Học sinh: **Quách Gia An**")
 st.sidebar.caption("🏫 Đơn vị: **Lớp 11-K30 - THPT Chuyên Hùng Vương**")
 
 # --- 6. MODULE 1: DATABASE EXPLORER ---
