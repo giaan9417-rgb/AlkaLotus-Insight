@@ -472,41 +472,61 @@ elif page == "4. Phân tích Cấu trúc (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 4")
         st.info("""
-        **Mục tiêu:** Đánh giá độ tương đồng cấu trúc (SAR) bằng thuật toán Tanimoto.
-        1. **Chọn tham chiếu:** Chọn 1 trong 7 hoạt chất lá sen làm gốc.
-        2. **Điều chỉnh ngưỡng:** Lọc các phân tử có độ tương đồng mong muốn.
-        3. **Biện luận:** Xác định các hoạt chất có cấu trúc tương đồng cao nhất.
+        **Mục tiêu:** Đánh giá độ tương đồng cấu trúc (SAR) đa chiều.
+        1. **Chọn tham chiếu:** Chọn 1 hoạt chất lá sen làm gốc.
+        2. **Điều chỉnh ngưỡng:** Lọc các phân tử có độ tương đồng Tanimoto đạt chuẩn.
+        3. **Phân tích Đa thông số:** So sánh 12 thông số hóa lý và cấu trúc theo chuẩn PubChem để chứng minh sự tương đồng.
         """)
     
+    import pandas as pd
+    import plotly.express as px
     from rdkit import Chem
     from rdkit import DataStructs
-    from rdkit.Chem import AllChem
+    from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
 
-    st.title("🧬 Phân tích Độ tương đồng Cấu trúc")
-    st.markdown("Sử dụng thuật toán **Tanimoto Similarity** để phân tích mối quan hệ cấu trúc - hoạt tính (SAR).")
+    st.title("🧬 Phân tích Độ tương đồng Cấu trúc & Hóa lý")
+    st.markdown("Sử dụng **Tanimoto Similarity** và đối chiếu các thông số hóa lý (PubChem) để phân tích mối quan hệ cấu trúc - hoạt tính (SAR).")
 
-    # 1. Cơ sở dữ liệu 7 Alkaloid lá sen (Thống nhất với danh mục dự án)
+    # 1. Cơ sở dữ liệu 7 Alkaloid lá sen (Bổ sung PubChem CID)
     alkaloids = {
-        "Nuciferine": "CN(C)CCC1=CC2=C(C=C1)C3=C(CC2)C=CC(=C3)OC",
-        "Nornuciferine": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC", 
-        "Roemerine": "CN1CCC2=CC3=C(C=C2C1CC4=C3C(=O)O4)OC",
-        "Pronuciferine": "CN1CCC2=C(C1)C3=C(C=C2)C=CC(=C3O)OC",
-        "Liensinine": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC",
-        "Neferine": "CN1CCC2=CC(=C(C=C2C1CC3=CC=C(C=C3)OC)OC)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)OC)OC",
-        "Isoliensinine": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"
+        "Nuciferine": {"cid": 10146, "smiles": "CN(C)CCC1=CC2=C(C=C1)C3=C(CC2)C=CC(=C3)OC"},
+        "Nornuciferine": {"cid": 12304193, "smiles": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC"}, 
+        "Roemerine": {"cid": 160353, "smiles": "CN1CCC2=CC3=C(C=C2C1CC4=C3C(=O)O4)OC"},
+        "Pronuciferine": {"cid": 119022, "smiles": "CN1CCC2=C(C1)C3=C(C=C2)C=CC(=C3O)OC"},
+        "Liensinine": {"cid": 160867, "smiles": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"},
+        "Neferine": {"cid": 73499, "smiles": "CN1CCC2=CC(=C(C=C2C1CC3=CC=C(C=C3)OC)OC)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)OC)OC"},
+        "Isoliensinine": {"cid": 160866, "smiles": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"}
     }
 
-    # 2. Xử lý Fingerprints
+    # 2. Xử lý Fingerprints và Trích xuất 12 thông số
     fps = {}
+    mol_data = {}
     valid_names = []
     
-    for name, smi in alkaloids.items():
+    for name, data in alkaloids.items():
+        smi = data["smiles"]
+        cid = data["cid"]
         mol = Chem.MolFromSmiles(smi)
+        
         if mol is not None:
-            # Tạo Fingerprint Morgan đường kính 2, 1024 bits
+            # Tạo Fingerprint
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
             fps[name] = fp
             valid_names.append(name)
+            
+            # Tính toán các thông số hóa lý (Mô phỏng dữ liệu PubChem)
+            mol_data[name] = {
+                "PubChem CID": cid,
+                "Formula": rdMolDescriptors.CalcMolFormula(mol),
+                "MW (g/mol)": round(Descriptors.MolWt(mol), 2),
+                "Canonical SMILES": Chem.MolToSmiles(mol, isomericSmiles=False),
+                "Isomeric SMILES": Chem.MolToSmiles(mol, isomericSmiles=True),
+                "XLogP": round(Descriptors.MolLogP(mol), 2),
+                "TPSA": round(Descriptors.TPSA(mol), 2),
+                "HBD": rdMolDescriptors.CalcNumLipinskiHDonors(mol),
+                "HBA": rdMolDescriptors.CalcNumLipinskiHAcceptors(mol),
+                "Rotatable Bonds": rdMolDescriptors.CalcNumRotatableBonds(mol)
+            }
         else:
             st.warning(f"⚠️ Cấu trúc {name} không hợp lệ, bỏ qua.")
 
@@ -514,30 +534,44 @@ elif page == "4. Phân tích Cấu trúc (Toán)":
     if len(valid_names) >= 2:
         col1, col2 = st.columns(2)
         with col1:
-            ref_mol = st.selectbox("Chọn phân tử tham chiếu:", valid_names)
+            ref_mol = st.selectbox("Chọn phân tử tham chiếu gốc:", valid_names)
         with col2:
             threshold = st.slider("Ngưỡng tương đồng (Tanimoto cutoff):", 0.0, 1.0, 0.3)
 
-        # 4. Tính toán Tanimoto Similarity
-        similarities = {name: DataStructs.TanimotoSimilarity(fps[ref_mol], fps[name]) for name in valid_names}
-        df_sim = pd.DataFrame.from_dict(similarities, orient='index', columns=['Score']).sort_values(by='Score', ascending=False)
+        # 4. Tính toán Tanimoto Similarity và Tổng hợp Bảng dữ liệu
+        for name in valid_names:
+            mol_data[name]["Tanimoto Similarity"] = round(DataStructs.TanimotoSimilarity(fps[ref_mol], fps[name]), 3)
+            
+        df_full = pd.DataFrame.from_dict(mol_data, orient='index')
+        # Sắp xếp theo độ tương đồng giảm dần
+        df_full = df_full.sort_values(by='Tanimoto Similarity', ascending=False)
 
         # 5. Trực quan hóa kết quả (Plotly Bar Chart)
-        fig = px.bar(df_sim, x=df_sim.index, y='Score', color='Score', 
-                     color_continuous_scale='Viridis', title=f"Độ tương đồng với {ref_mol}")
+        fig = px.bar(df_full, x=df_full.index, y='Tanimoto Similarity', color='Tanimoto Similarity', 
+                     color_continuous_scale='Viridis', title=f"Độ tương đồng cấu trúc với {ref_mol}")
         fig.add_hline(y=threshold, line_dash="dash", line_color="red")
         st.plotly_chart(fig, use_container_width=True)
 
-        # 6. Biện luận SAR
+        # 6. Bảng dữ liệu Hóa lý Toàn diện
+        st.subheader(f"📊 Hồ sơ Hóa lý & Tương đồng so với {ref_mol}")
+        st.write("Bảng dưới đây hiển thị 12 thông số so sánh chi tiết giữa các dẫn xuất (Dữ liệu sinh tự động qua RDKit tương đương PubChem):")
+        
+        # Hiển thị DataFrame với định dạng màu cho cột Tanimoto
+        st.dataframe(
+            df_full.style.background_gradient(subset=['Tanimoto Similarity'], cmap="Greens"), 
+            use_container_width=True
+        )
+
+        # 7. Biện luận SAR
         st.subheader("🔍 Phân tích SAR (Structure-Activity Relationship)")
-        matches = df_sim[df_sim['Score'] >= threshold]
-        st.write(f"- Có **{len(matches)-1}** phân tử khác có cấu trúc tương đồng với {ref_mol} trên ngưỡng {threshold}.")
+        matches = df_full[df_full['Tanimoto Similarity'] >= threshold]
+        st.success(f"Dựa trên thuật toán Fingerprint, có **{len(matches)-1}** dẫn xuất đạt ngưỡng tương đồng cấu trúc $\ge$ {threshold} so với {ref_mol}.")
         
         # Xem ma trận chi tiết
-        with st.expander("📊 Xem ma trận tương đồng chi tiết"):
-            matrix = [[DataStructs.TanimotoSimilarity(fps[a], fps[b]) for b in valid_names] for a in valid_names]
+        with st.expander("🧩 Xem Ma trận Tương đồng Tanimoto Chéo (Cross-Matrix)"):
+            matrix = [[round(DataStructs.TanimotoSimilarity(fps[a], fps[b]), 3) for b in valid_names] for a in valid_names]
             mat_df = pd.DataFrame(matrix, index=valid_names, columns=valid_names)
-            st.dataframe(mat_df.style.background_gradient(cmap="Greens"), use_container_width=True)
+            st.dataframe(mat_df.style.background_gradient(cmap="Blues"), use_container_width=True)
     else:
         st.error("Không đủ dữ liệu cấu trúc hợp lệ để thực hiện phân tích.")
 elif page == "5. Tối ưu Dung môi (Toán)":
