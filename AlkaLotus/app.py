@@ -518,7 +518,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         except Exception:
             return None, None
 
-    # Hàm tính Tanimoto an toàn (Khắc phục hoàn toàn lỗi Boost.Python.ArgumentError)
+    # Hàm tính Tanimoto an toàn
     def safe_tanimoto(fp1, fp2):
         if fp1 is None or fp2 is None:
             return 0.0
@@ -530,19 +530,28 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         rfp, _ = analyze_molecule(r_data["smiles"])
         ref_fps[r_name] = rfp
 
-    # 2. Sidebar: Nhập dữ liệu linh hoạt do người dùng tự định nghĩa
-    with st.sidebar:
-        st.header("⚙️ Nhập Dữ liệu Hợp chất Thử nghiệm")
-        input_mode = st.radio("Phương thức nhập dữ liệu:", ["Nhập thủ công", "Tải file CSV danh sách"])
+    # 2. KHU VỰC NHẬP DỮ LIỆU TRỰC TIẾP TRÊN MÀN HÌNH CHÍNH
+    st.subheader("⚙️ Nhập Dữ liệu Hợp chất Thử nghiệm")
+    
+    with st.expander("📝 Bảng điều khiển nhập thông số thử nghiệm", expanded=True):
+        input_mode = st.radio("Phương thức nhập dữ liệu:", ["Nhập thủ công", "Tải file CSV danh sách"], horizontal=True)
 
         test_compounds = []
 
         if input_mode == "Nhập thủ công":
             num_compounds = st.number_input("Số lượng hợp chất muốn phân tích:", min_value=1, max_value=10, value=1, step=1)
             for i in range(int(num_compounds)):
-                st.markdown(f"--- \n**Hợp chất #{i+1}**")
-                c_name = st.text_input(f"Tên hợp chất #{i+1}:", f"Hợp chất {i+1}", key=f"name_{i}")
-                c_smiles = st.text_input(f"Mã SMILES #{i+1}:", "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC" if i==0 else "", key=f"smiles_{i}")
+                st.markdown(f"**Hợp chất #{i+1}**")
+                col_name, col_smiles = st.columns([1, 2])
+                with col_name:
+                    c_name = st.text_input(f"Tên hợp chất #{i+1}:", f"Hợp chất {i+1}", key=f"name_{i}")
+                with col_smiles:
+                    # Chuỗi SMILES chuẩn mẫu (Armepavine / Alkaloid)
+                    c_smiles = st.text_input(
+                        f"Mã SMILES #{i+1}:", 
+                        "COc1ccc(CC2N(C)CCc3cc(OC)c(O)cc23)cc1" if i == 0 else "", 
+                        key=f"smiles_{i}"
+                    )
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -573,7 +582,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 st.info("Đang hiển thị mẫu thử nghiệm mặc định bên dưới:")
                 test_compounds.append({
                     "Name": "Hợp chất Mẫu A",
-                    "SMILES": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC",
+                    "SMILES": "COc1ccc(CC2N(C)CCc3cc(OC)c(O)cc23)cc1",
                     "g_ache": -8.5,
                     "g_bace1": -8.0
                 })
@@ -637,8 +646,10 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         st.warning(f"⚠️ Phát hiện mã SMILES không hợp lệ ở các chất: {', '.join(invalid_smiles)}. Đã tự động bỏ qua.")
 
     if not processed_results:
-        st.error("Chưa có hợp chất hợp lệ nào để hiển thị. Vui lòng kiểm tra lại thông tin nhập ở Sidebar.")
+        st.error("Chưa có hợp chất hợp lệ nào để hiển thị. Vui lòng kiểm tra lại thông tin nhập ở bảng trên.")
     else:
+        st.divider()
+
         # 4. Dashboard chỉ số nhanh
         st.subheader("📌 Tổng quan Các chỉ số Cấu trúc & Ái lực")
         selected_target_name = st.selectbox("Chọn hợp chất xem nhanh chỉ số:", [r["Hợp chất"] for r in processed_results])
@@ -669,7 +680,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             title="Tương quan giữa Tương đồng Cấu trúc vs Donepezil và Ái lực Liên kết AChE"
         )
         fig_scatter.update_traces(textposition='top center', marker=dict(size=12))
-        fig_scatter.update_yaxes(autorange="reversed")  # Năng lượng càng âm hiển thị càng cao
+        fig_scatter.update_yaxes(autorange="reversed")
         st.plotly_chart(fig_scatter, use_container_width=True)
 
         # 6. Bảng dữ liệu tổng hợp
@@ -707,7 +718,6 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         st.subheader("💡 Biện luận Chuyên sâu (Structure-Activity Relationship - SAR)")
         
         sim_don_val = target_res['Tanimoto vs Don']
-        sim_ver_val = target_res['Tanimoto vs Ver']
         
         st.markdown(f"**Đánh giá cho hợp chất đang chọn:** `{target_res['Hợp chất']}`")
         
