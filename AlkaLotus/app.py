@@ -633,87 +633,215 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         except Exception as e:
             st.error(f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}. Vui lòng kiểm tra lại các thông số nhập vào.")
 elif page == "5. Tối ưu Dung môi (Toán)":
-    with st.sidebar:
-        st.header("📖 Hướng dẫn Module 5")
-        st.info("""
-        **Mục tiêu:** Dự đoán độ tan của Alkaloid trong hỗn hợp dung môi dựa trên lý thuyết Hansen.
-        
-        **Các bước thực hiện:**
-        1. **Chọn Alkaloid:** Chọn đối tượng cần chiết xuất.
-        2. **Chọn dung môi:** Chọn các dung môi muốn phối trộn.
-        3. **Điều chỉnh tỷ lệ:** Sử dụng thanh trượt để thay đổi phần trăm từng dung môi.
-        4. **Đọc chỉ số:** Ra càng gần 0 và chỉ số hòa tan > 80% là hỗn hợp tối ưu.
-        """)
-    st.title("🧪 Hệ thống Tối ưu hóa Dung môi Hansen")
-    st.markdown("Sử dụng **Khoảng cách Hansen (Hansen Solubility Parameters - HSP)** để dự đoán độ tan Alkaloid trong hỗn hợp dung môi đa thành phần.")
+    import numpy as np
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import streamlit as st
 
-    # 1. Cơ sở dữ liệu dung môi
+    st.title("🧪 Module 5: Tối ưu hóa Dung môi Đa Chất (Hansen Space)")
+    st.markdown("""
+    Hệ thống phân tích và dự đoán độ hòa tan dựa trên **Không gian Hansen (Hansen Solubility Parameters - HSP)**. 
+    Module này cho phép tối ưu hóa hệ dung môi cho **bất kỳ hợp chất mục tiêu nào** thông qua việc phối trộn đa dung môi để đạt được khoảng cách hòa tan ($R_a$) ngắn nhất.
+    """)
+
+    with st.expander("📖 Cơ sở Toán học & Công thức (Hansen Theory)", expanded=False):
+        st.markdown("**1. Khoảng cách Hansen ($R_a$)**")
+        st.markdown("Khoảng cách trong không gian 3D giữa dung môi (hoặc hỗn hợp) và chất mục tiêu. $R_a$ càng nhỏ, độ hòa tan càng cao.")
+        st.latex(r"R_a = \sqrt{4(\delta_{d2} - \delta_{d1})^2 + (\delta_{p2} - \delta_{p1})^2 + (\delta_{h2} - \delta_{h1})^2}")
+        
+        st.markdown("**2. Chỉ số khác biệt năng lượng (RED - Relative Energy Difference)**")
+        st.markdown("$R_0$ là bán kính tương tác của chất mục tiêu. Nếu $RED < 1$: Hòa tan hoàn toàn; $RED = 1$: Hòa tan một phần; $RED > 1$: Không hòa tan.")
+        st.latex(r"RED = \frac{R_a}{R_0}")
+        
+        st.markdown("**3. Hàm tương thích Gaussian (Compatibility Score)**")
+        st.latex(r"Score (\%) = 100 \times e^{-\frac{R_a^2}{2(R_0/2)^2}}")
+
+    # --- 1. CƠ SỞ DỮ LIỆU DUNG MÔI & CHẤT CHUẨN ---
     solvents = {
+        "Nước (Water)": [15.5, 16.0, 42.3],
         "Ethanol": [15.8, 8.8, 19.4],
-        "Nước": [15.5, 16.0, 42.3],
-        "Acetone": [15.5, 10.4, 7.0],
         "Methanol": [14.7, 12.3, 22.3],
-        "Ethyl Acetate": [15.8, 5.3, 7.2]
+        "Acetone": [15.5, 10.4, 7.0],
+        "Ethyl Acetate": [15.8, 5.3, 7.2],
+        "Chloroform": [17.8, 3.1, 5.7],
+        "Dichloromethane": [17.0, 7.3, 7.1],
+        "Hexane": [14.9, 0.0, 0.0],
+        "Isopropanol": [15.8, 6.1, 16.4]
     }
 
-    target_alkaloid = st.selectbox("Chọn Alkaloid mục tiêu:", ["Nuciferine", "Roemerine", "Liensinine"])
-    target_coords = {"Nuciferine": [18.5, 6.2, 5.1], "Roemerine": [18.2, 5.8, 4.8], "Liensinine": [19.1, 8.5, 12.3]}
-    t_hsp = target_coords[target_alkaloid]
-
-    # 2. Cấu hình hỗn hợp
-    st.subheader("🎛️ Thiết lập hỗn hợp dung môi")
-    sel_sols = st.multiselect("Chọn dung môi trong hỗn hợp:", list(solvents.keys()), default=["Ethanol", "Nước"])
+    # --- 2. GIAO DIỆN NHẬP THÔNG SỐ CHẤT MỤC TIÊU ---
+    st.subheader("🎯 1. Khai báo Chất mục tiêu (Target Compound)")
+    target_mode = st.radio("Lựa chọn phương thức nhập:", ["Chọn từ danh sách chuẩn", "Nhập thông số tùy chỉnh (Custom)"], horizontal=True)
     
+    if target_mode == "Chọn từ danh sách chuẩn":
+        target_presets = {
+            "Nuciferine (Alkaloid)": {"dD": 18.5, "dP": 6.2, "dH": 5.1, "R0": 8.0},
+            "Roemerine (Alkaloid)": {"dD": 18.2, "dP": 5.8, "dH": 4.8, "R0": 8.0},
+            "Curcumin (Polyphenol)": {"dD": 17.4, "dP": 8.1, "dH": 9.2, "R0": 10.0},
+            "Quercetin (Flavonoid)": {"dD": 19.2, "dP": 10.3, "dH": 15.1, "R0": 12.0}
+        }
+        t_choice = st.selectbox("Chọn hợp chất:", list(target_presets.keys()))
+        t_hsp = [target_presets[t_choice]["dD"], target_presets[t_choice]["dP"], target_presets[t_choice]["dH"]]
+        t_R0 = target_presets[t_choice]["R0"]
+        t_name = t_choice
+        st.info(f"Thông số HSP của **{t_name}**: $\delta_D$={t_hsp[0]}, $\delta_P$={t_hsp[1]}, $\delta_H$={t_hsp[2]} | Bán kính $R_0$={t_R0}")
+    else:
+        t_name = st.text_input("Tên hợp chất tùy chỉnh:", "Chất X")
+        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+        t_dD = col_t1.number_input("Dispersion ($\delta_D$)", value=18.0, step=0.1)
+        t_dP = col_t2.number_input("Polar ($\delta_P$)", value=6.0, step=0.1)
+        t_dH = col_t3.number_input("H-Bond ($\delta_H$)", value=5.0, step=0.1)
+        t_R0 = col_t4.number_input("Bán kính hòa tan ($R_0$)", value=8.0, step=0.1)
+        t_hsp = [t_dD, t_dP, t_dH]
+
+    # --- 3. XÂY DỰNG HỖN HỢP DUNG MÔI & THUẬT TOÁN TỐI ƯU ---
+    st.markdown("---")
+    st.subheader("🎛️ 2. Xây dựng và Tối ưu Hỗn hợp Dung môi")
+    sel_sols = st.multiselect("Chọn các dung môi thành phần để phối trộn:", list(solvents.keys()), default=["Ethanol", "Nước (Water)"])
+    
+    if not sel_sols:
+        st.warning("Vui lòng chọn ít nhất 1 dung môi để tiếp tục.")
+        st.stop()
+
+    # Tính năng Thuật toán Tối ưu hóa (Tự động Gợi ý)
     weights = {}
-    if sel_sols:
+    sol_matrix = np.array([solvents[s] for s in sel_sols])
+    target_vec = np.array(t_hsp)
+    
+    st.markdown("**Chế độ phối trộn:**")
+    opt_mode = st.checkbox("🤖 Bật AI/Thuật toán Tự động tìm tỷ lệ tối ưu nhất", value=False)
+    
+    if opt_mode:
+        st.info("🔄 Hệ thống đang chạy mô phỏng Monte Carlo (10,000 vòng lặp) để dò quét không gian tỷ lệ nhằm tìm ra hệ dung môi có khoảng cách $R_a$ nhỏ nhất...")
+        # Monte Carlo Optimization for best ratio
+        np.random.seed(42)
+        n_iters = 10000
+        n_dim = len(sel_sols)
+        random_weights = np.random.dirichlet(np.ones(n_dim), size=n_iters)
+        
+        # Calculate Ra for all 10000 combinations instantly using vectorized numpy
+        mixes = np.dot(random_weights, sol_matrix)
+        diff = mixes - target_vec
+        # Ra formula: 4*(dD)^2 + (dP)^2 + (dH)^2
+        ra_squared = 4*(diff[:, 0]**2) + (diff[:, 1]**2) + (diff[:, 2]**2)
+        ra_arrays = np.sqrt(ra_squared)
+        
+        best_idx = np.argmin(ra_arrays)
+        best_w = random_weights[best_idx]
+        
+        st.success("✅ Đã tìm thấy tỷ lệ tối ưu toán học!")
+        for i, s in enumerate(sel_sols):
+            weights[s] = best_w[i]
+            st.slider(f"Tỷ lệ {s} (%)", 0.0, 100.0, float(best_w[i]*100), disabled=True)
+    else:
+        # Nhập tay
         for s in sel_sols:
             weights[s] = st.slider(f"Tỷ lệ {s} (%)", 0, 100, int(100/len(sel_sols)))
         
-        total = sum(weights.values())
-        if total > 0:
-            weights = {k: v/total for k, v in weights.items()}
-            
-            # Tính toán thông số hỗn hợp
-            mix_hsp = np.zeros(3)
-            for s, w in weights.items():
-                mix_hsp += np.array(solvents[s]) * w
-            
-            # 3. Tính toán Khoảng cách Hansen (Ra) chuẩn xác
-            dist = np.sqrt(4*(mix_hsp[0]-t_hsp[0])**2 + (mix_hsp[1]-t_hsp[1])**2 + (mix_hsp[2]-t_hsp[2])**2)
-            
-            # --- CÔNG THỨC KHOA HỌC CHUẨN (HÀM GAUSSIAN) ---
-            # R0 là bán kính tương tác giả định của hợp chất mục tiêu (~8.0 units)
-            R0 = 8.0 
-            score = 100 * np.exp(- (dist**2) / (2 * (R0/2)**2))
-            # ------------------------------------------------
+        total_w = sum(weights.values())
+        if total_w == 0:
+            st.error("Tổng tỷ lệ phải lớn hơn 0%")
+            st.stop()
+        # Chuẩn hóa về tổng = 1
+        weights = {k: v/total_w for k, v in weights.items()}
 
-            # 4. Hiển thị kết quả
-            st.divider()
-            c1, c2 = st.columns(2)
-            c1.metric("Khoảng cách Ra", f"{dist:.2f}", help="Khoảng cách Hansen (Ra) càng nhỏ, độ tương thích càng cao.")
-            c2.metric("Chỉ số hòa tan", f"{score:.1f}%")
+    # TÍNH TOÁN KẾT QUẢ CUỐI CÙNG
+    mix_hsp = np.zeros(3)
+    for s, w in weights.items():
+        mix_hsp += np.array(solvents[s]) * w
+        
+    dist = np.sqrt(4*(mix_hsp[0]-t_hsp[0])**2 + (mix_hsp[1]-t_hsp[1])**2 + (mix_hsp[2]-t_hsp[2])**2)
+    red_score = dist / t_R0 if t_R0 > 0 else 999
+    compat_score = 100 * np.exp(- (dist**2) / (2 * (t_R0/2)**2))
 
-            # 5. Đồ thị Radar (Phân tích chuyên sâu)
-            st.subheader("📊 Phân tích độ tương thích (Hansen Profile)")
-            radar_df = pd.DataFrame({
-                'Thông số': ['Dispersion (dD)', 'Polar (dP)', 'H-Bond (dH)'],
-                'Mục tiêu': t_hsp,
-                'Hỗn hợp': mix_hsp
-            })
-            df_melted = radar_df.melt(id_vars='Thông số', var_name='Loại', value_name='Giá trị')
-            
-            fig = px.line_polar(df_melted, r='Giá trị', theta='Thông số', color='Loại', 
-                                line_close=True, markers=True, template="plotly_white")
-            fig.update_traces(fill='toself')
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption("💡 **Nhận xét:** Diện tích hình 'Hỗn hợp' càng gần với 'Mục tiêu' thì độ tan càng lý tưởng.")
+    # --- 4. HIỂN THỊ KẾT QUẢ & PHÂN TÍCH HIỆU QUẢ ---
+    st.markdown("---")
+    st.subheader(f"📊 3. Báo cáo Hiệu quả Chiết tách: {t_name}")
+    
+    m1, m2, m3 = st.columns(3)
+    m1.metric(label="Khoảng cách Hansen ($R_a$)", value=f"{dist:.2f}", help="Càng gần 0 càng tốt.")
+    m2.metric(label="Chỉ số RED ($R_a/R_0$)", value=f"{red_score:.2f}", help="< 1 là hòa tan tốt, > 1 là khó hòa tan.")
+    m3.metric(label="Mức độ Tương thích", value=f"{compat_score:.1f}%", help="Dựa trên hàm phân bố Gaussian.")
 
-            # 6. Lời khuyên thông minh
-            if score > 80:
-                st.balloons()
-                st.success(f"🎉 **Tối ưu:** Tỷ lệ này cực kỳ phù hợp để chiết xuất {target_alkaloid}!")
-            elif score < 40:
-                st.error("⚠️ **Cần điều chỉnh:** Dung môi hiện tại quá xa so với mục tiêu. Hãy thử thay đổi tỷ lệ hoặc loại dung môi khác.")
+    # Đánh giá kỹ thuật
+    if red_score < 0.8:
+        st.success(f"🌟 **Đánh giá Chuyên môn:** Hỗn hợp dung môi này **cực kỳ xuất sắc** để hòa tan/chiết tách {t_name}. Lực phân tán và độ phân cực hoàn toàn khớp với cấu trúc đích.")
+    elif red_score <= 1.0:
+        st.warning(f"👍 **Đánh giá Chuyên môn:** Hỗn hợp này hòa tan ở mức **khá/chấp nhận được** (Nằm ngay trên ranh giới vỏ cầu Hansen). Có thể cần gia nhiệt hoặc dùng thêm sóng siêu âm (Ultrasound) để tăng hiệu suất.")
+    else:
+        st.error(f"⚠️ **Đánh giá Chuyên môn:** Hỗn hợp này **không phù hợp** (RED > 1). Hệ dung môi nằm ngoài vùng hòa tan của {t_name}. Hãy điều chỉnh lại tỷ lệ hoặc thêm dung môi khác.")
+
+    # --- 5. TRỰC QUAN HÓA (RADAR & 3D SCATTER) ---
+    st.subheader("🌌 4. Sơ đồ Trực quan hóa Không gian Dung môi")
+    c_chart1, c_chart2 = st.columns([1, 1.2])
+
+    with c_chart1:
+        st.markdown("**Biểu đồ Cấu hình (Hansen Radar Profile)**")
+        radar_df = pd.DataFrame({
+            'Chỉ số': ['Dispersion (dD)', 'Polar (dP)', 'H-Bond (dH)'],
+            'Mục tiêu': t_hsp,
+            'Hỗn hợp Dung môi': mix_hsp
+        })
+        df_melted = radar_df.melt(id_vars='Chỉ số', var_name='Loại', value_name='Giá trị')
+        
+        fig_radar = px.line_polar(df_melted, r='Giá trị', theta='Chỉ số', color='Loại', 
+                                  line_close=True, markers=True, template="plotly_white",
+                                  color_discrete_sequence=["#d62728", "#1f77b4"])
+        fig_radar.update_traces(fill='toself', opacity=0.7)
+        fig_radar.update_layout(legend=dict(orientation="h", y=-0.2))
+        st.plotly_chart(fig_radar, use_container_width=True)
+
+    with c_chart2:
+        st.markdown("**Không gian Hansen 3D (Hansen Space)**")
+        # Plotting 3D space
+        fig_3d = go.Figure()
+        
+        # Plot target
+        fig_3d.add_trace(go.Scatter3d(
+            x=[t_hsp[0]], y=[t_hsp[1]], z=[t_hsp[2]],
+            mode='markers+text',
+            marker=dict(size=10, color='red', symbol='diamond'),
+            name='Chất Mục tiêu',
+            text=[t_name], textposition="top center"
+        ))
+
+        # Plot individual selected solvents
+        for s in sel_sols:
+            fig_3d.add_trace(go.Scatter3d(
+                x=[solvents[s][0]], y=[solvents[s][1]], z=[solvents[s][2]],
+                mode='markers+text',
+                marker=dict(size=5, color='gray'),
+                name=f'Thành phần: {s}',
+                text=[s], textposition="bottom center"
+            ))
+
+        # Plot final mixture
+        fig_3d.add_trace(go.Scatter3d(
+            x=[mix_hsp[0]], y=[mix_hsp[1]], z=[mix_hsp[2]],
+            mode='markers',
+            marker=dict(size=12, color='blue', line=dict(width=2, color='black')),
+            name='Hỗn hợp Tối ưu'
+        ))
+
+        # Draw a line between Target and Mix (Distance Ra)
+        fig_3d.add_trace(go.Scatter3d(
+            x=[t_hsp[0], mix_hsp[0]], y=[t_hsp[1], mix_hsp[1]], z=[t_hsp[2], mix_hsp[2]],
+            mode='lines',
+            line=dict(color='purple', width=4, dash='dash'),
+            name=f'Khoảng cách Ra ({dist:.1f})'
+        ))
+
+        fig_3d.update_layout(
+            scene=dict(
+                xaxis_title='Phân tán - dD (Dispersion)',
+                yaxis_title='Phân cực - dP (Polar)',
+                zaxis_title='LK Hydro - dH (Hydrogen)',
+            ),
+            margin=dict(l=0, r=0, b=0, t=0),
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        )
+        st.plotly_chart(fig_3d, use_container_width=True)
 elif page == "6. Động học Chiết tách (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 6")
