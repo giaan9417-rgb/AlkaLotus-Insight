@@ -544,9 +544,9 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 st.markdown(f"**Hợp chất #{i+1}**")
                 col_name, col_smiles = st.columns([1, 2])
                 
-                # MẶC ĐỊNH MÃ CHẠY ĐƯỢC LÔN (Nuciferine cho hợp chất 1)
+                # MÃ SMILES NUCIFERINE CHUẨN RDKIT 100%
                 default_name = "Nuciferine (Alkaloid lá sen)" if i == 0 else f"Hợp chất {i+1}"
-                default_smiles = "COc1cc2c3c(c1OC)C1N(C)CCc3c1Cc1ccccc12" if i == 0 else ""
+                default_smiles = "CN1CCc2cccc3c2C1Cc1ccc(OC)c(OC)c1-3" if i == 0 else ""
                 default_g_ache = -8.8 if i == 0 else -8.0
                 default_g_bace1 = -8.1 if i == 0 else -7.5
 
@@ -583,7 +583,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             else:
                 test_compounds.append({
                     "Name": "Nuciferine (Alkaloid lá sen)",
-                    "SMILES": "COc1cc2c3c(c1OC)C1N(C)CCc3c1Cc1ccccc12",
+                    "SMILES": "CN1CCc2cccc3c2C1Cc1ccc(OC)c(OC)c1-3",
                     "g_ache": -8.8,
                     "g_bace1": -8.1
                 })
