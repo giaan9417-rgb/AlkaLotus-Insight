@@ -531,9 +531,9 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         ref_fps[r_name] = rfp
 
     # 2. KHU VỰC NHẬP DỮ LIỆU TRỰC TIẾP TRÊN MÀN HÌNH CHÍNH
-    st.subheader("⚙️ Nhập Dữ liệu Hợp chất Thử nghiệm")
+    st.subheader("⚙️ Bảng Điều khiển Hợp chất Thử nghiệm")
     
-    with st.expander("📝 Bảng điều khiển nhập thông số thử nghiệm", expanded=True):
+    with st.expander("📝 Cấu hình & Thay đổi thông số hợp chất", expanded=True):
         input_mode = st.radio("Phương thức nhập dữ liệu:", ["Nhập thủ công", "Tải file CSV danh sách"], horizontal=True)
 
         test_compounds = []
@@ -543,21 +543,23 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             for i in range(int(num_compounds)):
                 st.markdown(f"**Hợp chất #{i+1}**")
                 col_name, col_smiles = st.columns([1, 2])
+                
+                # MẶC ĐỊNH MÃ CHẠY ĐƯỢC LÔN (Nuciferine cho hợp chất 1)
+                default_name = "Nuciferine (Alkaloid lá sen)" if i == 0 else f"Hợp chất {i+1}"
+                default_smiles = "COc1cc2c3c(c1OC)C1N(C)CCc3c1Cc1ccccc12" if i == 0 else ""
+                default_g_ache = -8.8 if i == 0 else -8.0
+                default_g_bace1 = -8.1 if i == 0 else -7.5
+
                 with col_name:
-                    c_name = st.text_input(f"Tên hợp chất #{i+1}:", f"Hợp chất {i+1}", key=f"name_{i}")
+                    c_name = st.text_input(f"Tên hợp chất #{i+1}:", default_name, key=f"name_{i}")
                 with col_smiles:
-                    # Chuỗi SMILES chuẩn mẫu (Armepavine / Alkaloid)
-                    c_smiles = st.text_input(
-                        f"Mã SMILES #{i+1}:", 
-                        "COc1ccc(CC2N(C)CCc3cc(OC)c(O)cc23)cc1" if i == 0 else "", 
-                        key=f"smiles_{i}"
-                    )
+                    c_smiles = st.text_input(f"Mã SMILES #{i+1}:", default_smiles, key=f"smiles_{i}")
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    g_ache = st.number_input(f"ΔG AChE #{i+1} (kcal/mol):", value=-8.5, key=f"g_ache_{i}")
+                    g_ache = st.number_input(f"ΔG AChE #{i+1} (kcal/mol):", value=default_g_ache, key=f"g_ache_{i}")
                 with col_b:
-                    g_bace1 = st.number_input(f"ΔG BACE1 #{i+1} (kcal/mol):", value=-8.0, key=f"g_bace1_{i}")
+                    g_bace1 = st.number_input(f"ΔG BACE1 #{i+1} (kcal/mol):", value=default_g_bace1, key=f"g_bace1_{i}")
 
                 test_compounds.append({
                     "Name": c_name,
@@ -579,12 +581,11 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                         "g_bace1": float(row.get("g_bace1", -8.0))
                     })
             else:
-                st.info("Đang hiển thị mẫu thử nghiệm mặc định bên dưới:")
                 test_compounds.append({
-                    "Name": "Hợp chất Mẫu A",
-                    "SMILES": "COc1ccc(CC2N(C)CCc3cc(OC)c(O)cc23)cc1",
-                    "g_ache": -8.5,
-                    "g_bace1": -8.0
+                    "Name": "Nuciferine (Alkaloid lá sen)",
+                    "SMILES": "COc1cc2c3c(c1OC)C1N(C)CCc3c1Cc1ccccc12",
+                    "g_ache": -8.8,
+                    "g_bace1": -8.1
                 })
 
     # 3. Tính toán Tanimoto Similarity
