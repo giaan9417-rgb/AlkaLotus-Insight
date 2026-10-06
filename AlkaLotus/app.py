@@ -485,55 +485,72 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     1. **Tanimoto Similarity:** Độ tương đồng khung cấu trúc 2D (Morgan Fingerprint, radius=2, 1024 bits).
     2. **Ái lực Liên kết ($\Delta G$):** So sánh năng lượng Docking trực tiếp với 2 thuốc chuẩn gốc (**Donepezil** & **Verubecestat**).
     
-    👉 **Cải tiến thông minh:** Hỗ trợ nhập bằng **Tên hợp chất (Tự động tìm trên PubChem)**, **Mã InChI**, hoặc **SMILES**.
+    👉 **Cải tiến:** Tự động nhận diện tên các Alkaloid lá sen phổ biến offline hoặc tra cứu PubChem online.
     """)
 
-    # Hàm phân tích thông minh: Đọc SMILES -> InChI -> Tự động gọi PubChem API nếu lỗi
+    # 1. Thư viện cấu trúc nội bộ (Tự động khớp tên kể cả khi không nhập SMILES)
+    KNOWN_COMPOUNDS = {
+        "nuciferine": "CN1CCC2=C3C1CC4=CC=CC=C4C3=C(C(=C2)OC)OC",
+        "nornuciferine": "CNC1CCC2=C3C1CC4=CC=CC=C4C3=C(C(=C2)OC)OC",
+        "pronuciferine": "CN1CCC23C4=C(C=CC2=O)C(=C(C=C4)OC)OC1C3",
+        "roemerine": "CN1CCC2=C3C1CC4=CC=CC=C4C3=C5C2OCO5",
+        "liriodenine": "O=C1C2=CC=CC=C2C3=C4C1=CC=C5C4=C(OCO5)C=N3",
+        "anonaine": "C1C2C3=C(C4=C1C=CC(=C4)O2)C5=CC=CC=C5N3",
+        "quercetin": "C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O)O",
+        "donepezil": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
+        "verubecestat": "CS(=O)(=O)N1CCN(CC1)c2ccc(c3csc(N)n3)cc2F"
+    }
+
+    # 2. Hàm phân tích cấu trúc đa tầng (Offline Dictionary -> Custom SMILES -> Online API)
     @st.cache_data
     def analyze_molecule_smart(input_str, comp_name=""):
-        if not input_str or not isinstance(input_str, str):
-            input_str = ""
-        
-        text = input_str.strip()
+        text = input_str.strip() if input_str else ""
+        clean_name = comp_name.strip().lower().split("(")[0].strip() if comp_name else ""
         mol = None
         source_used = "N/A"
 
-        # 1. Thử đọc trực tiếp bằng SMILES
+        # Ưu tiên 1: Đọc mã SMILES/InChI trực tiếp nếu người dùng nhập
         if text:
-            try:
-                mol = Chem.MolFromSmiles(text)
-                if mol is not None:
-                    source_used = "Mã SMILES"
-            except Exception:
-                mol = None
+            if text.startswith("InChI="):
+                try:
+                    mol = Chem.MolFromInChI(text)
+                    if mol is not None:
+                        source_used = "Mã InChI nhập vào"
+                except Exception:
+                    pass
+            else:
+                try:
+                    mol = Chem.MolFromSmiles(text)
+                    if mol is not None:
+                        source_used = "Mã SMILES nhập vào"
+                except Exception:
+                    pass
 
-        # 2. Thử đọc bằng InChI
-        if mol is None and text.startswith("InChI="):
+        # Ưu tiên 2: Tra cứu trong Thư viện nội bộ (Nhanh & 100% Không bao giờ lỗi mạng)
+        if mol is None and clean_name in KNOWN_COMPOUNDS:
             try:
-                mol = Chem.MolFromInChI(text)
+                smiles_builtin = KNOWN_COMPOUNDS[clean_name]
+                mol = Chem.MolFromSmiles(smiles_builtin)
                 if mol is not None:
-                    source_used = "Mã InChI"
+                    source_used = f"Thư viện nội bộ hệ thống ({comp_name.strip()})"
             except Exception:
-                mol = None
+                pass
 
-        # 3. Tự động tra cứu PubChem API bằng Tên hợp chất hoặc Chuỗi nhập vào
-        search_query = comp_name.strip() if comp_name else text
-        if mol is None and search_query:
+        # Ưu tiên 3: Dự phòng tra cứu PubChem API nếu không có trong thư viện nội bộ
+        if mol is None and (clean_name or text):
+            search_query = clean_name if clean_name else text
             try:
-                # Lấy tên rút gọn (bỏ bớt phần chú thích trong ngoặc nếu có)
-                clean_name = search_query.split("(")[0].strip()
-                encoded_name = urllib.parse.quote(clean_name)
+                encoded_name = urllib.parse.quote(search_query)
                 url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded_name}/property/CanonicalSMILES/JSON"
-                
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
                 with urllib.request.urlopen(req, timeout=3) as response:
                     data = json.loads(response.read().decode())
                     pubchem_smiles = data['PropertyTable']['Properties'][0]['CanonicalSMILES']
                     mol = Chem.MolFromSmiles(pubchem_smiles)
                     if mol is not None:
-                        source_used = f"PubChem API (Tra cứu theo tên '{clean_name}')"
+                        source_used = f"PubChem API (Tra theo tên '{search_query}')"
             except Exception:
-                mol = None
+                pass
 
         if mol is None:
             return None, None, None
@@ -559,7 +576,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             return 0.0
         return round(DataStructs.TanimotoSimilarity(fp1, fp2), 3)
 
-    # 1. Cơ sở dữ liệu cố định: 2 Thuốc chuẩn gốc (Benchmark Standards)
+    # 3. Cơ sở dữ liệu 2 thuốc chuẩn gốc
     ref_drugs = {
         "Donepezil (Chuẩn AChE)": {
             "smiles": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
@@ -573,13 +590,12 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         }
     }
 
-    # Tính Fingerprint cho 2 thuốc chuẩn
     ref_fps = {}
     for r_name, r_data in ref_drugs.items():
         rfp, _, _ = analyze_molecule_smart(r_data["smiles"], r_name)
         ref_fps[r_name] = rfp
 
-    # 2. KHU VỰC NHẬP DỮ LIỆU TRỰC TIẾP TRÊN MÀN HÌNH CHÍNH
+    # 4. Khu vực nhập dữ liệu
     st.subheader("⚙️ Bảng Điều khiển Hợp chất Thử nghiệm")
     
     with st.expander("📝 Cấu hình & Thay đổi thông số hợp chất", expanded=True):
@@ -594,14 +610,14 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 col_name, col_smiles = st.columns([1, 2])
                 
                 default_name = "Nuciferine" if i == 0 else f"Hợp chất {i+1}"
-                default_smiles = "COc1cc2c3c(c1OC)C4N(C)CCc3c4Cc5ccccc52" if i == 0 else ""
+                default_smiles = "" if i == 0 else ""
                 default_g_ache = -8.8 if i == 0 else -8.0
                 default_g_bace1 = -8.1 if i == 0 else -7.5
 
                 with col_name:
-                    c_name = st.text_input(f"Tên hợp chất #{i+1}:", default_name, key=f"name_{i}", help="Gõ tên tiếng Anh/IUPAC (vd: Nuciferine, Quercetin) để tự động tìm trên PubChem")
+                    c_name = st.text_input(f"Tên hợp chất #{i+1}:", default_name, key=f"name_{i}", help="Chỉ cần gõ tên (vd: Nuciferine, Nornuciferine, Liriodenine...), hệ thống tự động nhận diện cấu trúc")
                 with col_smiles:
-                    c_smiles = st.text_input(f"Mã SMILES / InChI #{i+1} (Không bắt buộc):", default_smiles, key=f"smiles_{i}", help="Có thể để trống nếu đã nhập đúng tên hợp chất ở ô bên trái")
+                    c_smiles = st.text_input(f"Mã SMILES / InChI #{i+1} (Không bắt buộc):", default_smiles, key=f"smiles_{i}")
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -618,7 +634,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
 
         else:
             uploaded_file = st.file_uploader("Tải lên file CSV", type=["csv"])
-            st.caption("Cột yêu cầu trong CSV: `Name`, `SMILES` (hoặc InChI), `g_ache`, `g_bace1`")
+            st.caption("Cột yêu cầu trong CSV: `Name`, `SMILES` (hoặc để trống nếu tên hợp chất phổ biến), `g_ache`, `g_bace1`")
             if uploaded_file is not None:
                 df_upload = pd.read_csv(uploaded_file)
                 for _, row in df_upload.iterrows():
@@ -636,7 +652,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                     "g_bace1": -8.1
                 })
 
-    # 3. Tính toán Tanimoto Similarity
+    # 5. Xử lý và tính toán
     processed_results = []
     plot_points = []
 
@@ -692,14 +708,14 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         })
 
     if invalid_compounds:
-        st.error(f"❌ Không tìm thấy cấu trúc hợp lệ cho các chất: {', '.join(invalid_compounds)}. Vui lòng kiểm tra lại tên tiếng Anh hoặc mã SMILES/InChI.")
+        st.error(f"❌ Không tìm thấy cấu trúc hợp lệ cho các chất: {', '.join(invalid_compounds)}. Vui lòng kiểm tra lại tên tiếng Anh hoặc nhập mã SMILES.")
 
     if not processed_results:
         st.warning("Vui lòng nhập tên hợp chất hoặc mã cấu trúc hợp lệ ở bảng trên.")
     else:
         st.divider()
 
-        # 4. Dashboard chỉ số nhanh
+        # 6. Hiển thị Dashboard
         st.subheader("📌 Tổng quan Các chỉ số Cấu trúc & Ái lực")
         selected_target_name = st.selectbox("Chọn hợp chất xem nhanh chỉ số:", [r["Hợp chất"] for r in processed_results])
         target_res = next(r for r in processed_results if r["Hợp chất"] == selected_target_name)
@@ -712,9 +728,8 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         c3.metric("Tanimoto vs Verubecestat", f"{target_res['Tanimoto vs Ver']*100:.1f}%")
         c4.metric("ΔG BACE1 (kcal/mol)", f"{target_res['ΔG BACE1']}")
 
-        # 5. Đồ thị Không gian Tương đồng Tanimoto & Ái lực Gắn kết
+        # Đồ thị tương quan
         st.subheader("🎯 Đồ thị Mối tương quan Cấu trúc (Tanimoto) & Ái lực gắn kết (ΔG)")
-        
         df_plot = pd.DataFrame(plot_points)
         fig_scatter = px.scatter(
             df_plot, 
@@ -734,7 +749,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         fig_scatter.update_yaxes(autorange="reversed")
         st.plotly_chart(fig_scatter, use_container_width=True)
 
-        # 6. Bảng dữ liệu tổng hợp
+        # Bảng dữ liệu tổng hợp
         st.subheader("📊 Bảng Báo cáo Tổng hợp (Full Tanimoto & Docking Metrics)")
 
         ref_table_rows = [
@@ -767,17 +782,15 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             use_container_width=True
         )
 
-        # 7. Biện luận Chuyên sâu SAR
+        # Biện luận SAR
         st.subheader("💡 Biện luận Chuyên sâu (Structure-Activity Relationship - SAR)")
-        
         sim_don_val = target_res['Tanimoto vs Don']
-        
         st.markdown(f"**Đánh giá cho hợp chất đang chọn:** `{target_res['Hợp chất']}`")
         
         if sim_don_val >= 0.5:
-            st.success(f"• **Tương đồng cấu trúc cao với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất sở hữu nhiều đặc điểm/khung giàn tương đồng với thuốc chuẩn Donepezil, có khả năng cao tương tác với túi gắn kết của AChE.")
+            st.success(f"• **Tương đồng cấu trúc cao với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất sở hữu nhiều đặc điểm tương đồng với Donepezil, có khả năng cao tương tác tốt với túi gắn kết của AChE.")
         elif sim_don_val >= 0.3:
-            st.info(f"• **Tương đồng cấu trúc trung bình với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất mang một số nhóm thế hoặc bộ khung tương tự Donepezil.")
+            st.info(f"• **Tương đồng cấu trúc trung bình với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất mang một số bộ khung tương tự Donepezil.")
         else:
             st.warning(f"• **Độ tương đồng cấu trúc thấp so với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất mang bộ khung cấu trúc mới biệt lập.")
 
