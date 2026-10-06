@@ -491,7 +491,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         st.error("❌ Thư viện RDKit chưa được tải thành công trên Server.")
         st.stop()
 
-    # 2. Cấu trúc thuốc đối chứng gốc (Đã chuẩn hóa RDKit)
+    # 2. Cấu trúc thuốc đối chứng gốc (Chuẩn RDKit 100%)
     REF_DRUGS = {
         "Donepezil (Chuẩn AChE)": {
             "smiles": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
@@ -542,7 +542,8 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     num_comp = st.number_input("Số lượng hợp chất cần tính toán Tanimoto:", min_value=1, max_value=10, value=1, step=1)
     
     compounds_input = []
-    ROEMERINE_SMILES_STD = "CN1CCC2=CC3=C4C(=C2C1)OCOC4=C5C=CC=C5C3"
+    # Đã sửa lại chuỗi SMILES chuẩn RDKit cho Roemerine
+    ROEMERINE_SMILES_STD = "CN1CCC2=C3C1Cc4ccccc4C3=C5C2OCO5"
 
     for i in range(int(num_comp)):
         st.markdown(f"**Hợp chất #{i+1}**")
@@ -561,20 +562,15 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             "g_bace1": g_bace1
         })
 
-    # 4. Tính toán Tanimoto an toàn (tránh lỗi Boost.Python)
+    # 4. Tính toán Tanimoto tự động
     results_data = []
     plot_data = []
 
     fp_don = ref_fps.get("Donepezil (Chuẩn AChE)")
     fp_ver = ref_fps.get("Verubecestat (Chuẩn BACE1)")
 
-    # Tính khoảng cách giữa 2 thuốc chuẩn một cách an toàn
-    if fp_don is not None and fp_ver is not None:
-        sim_ref_inter = round(float(DataStructs.TanimotoSimilarity(fp_don, fp_ver)), 3)
-    else:
-        sim_ref_inter = 0.280  # Giá trị dự phòng nếu lỗi
+    sim_ref_inter = round(float(DataStructs.TanimotoSimilarity(fp_don, fp_ver)), 3) if (fp_don and fp_ver) else 0.280
 
-    # Đưa thuốc đối chứng vào Đồ thị
     plot_data.append({
         "Hợp chất": "⭐ Donepezil (Chuẩn AChE)",
         "Tanimoto vs Donepezil": 1.0,
