@@ -482,9 +482,9 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     st.title("🧬 Module Phân tích Cấu trúc & Tương đồng Tanimoto (RDKit)")
     st.markdown("""
     **Cơ sở Khoa học Hóa tin học (In Silico Screening):**
-    * **Chuyển đổi Cấu trúc:** Xây dựng mô hình phân tử, chuẩn hóa liên kết và hệ thống vòng thơm tự động.
+    * **Chuyển đổi Cấu trúc:** Đọc và chuẩn hóa cấu trúc phân tử chính xác từ mã SMILES.
     * **Morgan Fingerprint:** Sinh dấu vân tay phân tử (Morgan Fingerprint, Radius = 2, 1024 bits) để định lượng độ tương đồng **Tanimoto**.
-    * **Quy tắc Lipinski & Hóa lý:** Tự động tính toán $MW, LogP, TPSA, HBD, HBA$.
+    * **Quy tắc Lipinski & Hóa lý:** Trích xuất tự động các chỉ số $MW, LogP, TPSA, HBD, HBA$.
     """)
 
     if not RDKIT_AVAILABLE:
@@ -505,26 +505,19 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         }
     }
 
-    def process_molecule_full(smiles_str):
-        """Hàm xử lý an toàn tuyệt đối: Tích hợp Fallback tự động chống lỗi RDKit Ring/Valence"""
-        fallback_smiles = "CN1CCC2=CC3=C(C2=C1)OCO3" # Khung cơ sở an toàn cho alkaloid
-        target_s = smiles_str.strip() if smiles_str else ""
-        
-        mol = None
-        if target_s:
-            try:
-                mol = Chem.MolFromSmiles(target_s)
-            except:
-                mol = None
-        
-        # Nếu chuỗi lỗi, tự động chuyển về khung chuẩn để app không bao giờ dừng đột ngột
-        is_fallback = False
-        if mol is None:
-            target_s = fallback_smiles
-            mol = Chem.MolFromSmiles(target_s)
-            is_fallback = True
-
+    def process_molecule_strict(smiles_str):
+        """Hàm phân tích nghiêm ngặt chuẩn RDKit: Không dùng dữ liệu giả lập, trả về None nếu lỗi cấu trúc"""
+        if not smiles_str or not isinstance(smiles_str, str):
+            return None, None
         try:
+            clean_s = smiles_str.strip()
+            mol = Chem.MolFromSmiles(clean_s)
+            if mol is None and clean_s.startswith("InChI="):
+                mol = Chem.MolFromInChI(clean_s)
+            if mol is None:
+                return None, None
+
+            # Chuẩn hóa cấu trúc hóa học chuẩn xác
             Chem.SanitizeMol(mol)
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
             props = {
@@ -534,18 +527,15 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 "HBD": int(rdMolDescriptors.CalcNumLipinskiHDonors(mol)),
                 "HBA": int(rdMolDescriptors.CalcNumLipinskiHAcceptors(mol))
             }
-            return fp, props, is_fallback
+            return fp, props
         except Exception:
-            mol_safe = Chem.MolFromSmiles("c1ccccc1")
-            fp = AllChem.GetMorganFingerprintAsBitVect(mol_safe, 2, nBits=1024)
-            props = {"MW": 281.35, "LogP": 2.5, "TPSA": 20.0, "HBD": 1, "HBA": 2}
-            return fp, props, True
+            return None, None
 
-    # Tiền xử lý thuốc đối chứng
+    # Tiền xử lý thuốc đối chứng chuẩn
     ref_fps = {}
     ref_props = {}
     for rname, rinfo in REF_DRUGS.items():
-        fp_r, prop_r, _ = process_molecule_full(rinfo["smiles"])
+        fp_r, prop_r = process_molecule_strict(rinfo["smiles"])
         ref_fps[rname] = fp_r
         ref_props[rname] = prop_r
 
@@ -554,14 +544,15 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     num_comp = st.number_input("Số lượng hợp chất cần phân tích cấu trúc:", min_value=1, max_value=15, value=1, step=1)
     
     compounds_input = []
-    ROEMERINE_SMILES_DEFAULT = "CN1CCC2=C3C1Cc4ccccc4C3=C5C2OCO5"
+    # Mã SMILES chuẩn xác, tương thích hoàn toàn với RDKit cho khung Aporphine (Roemerine)
+    ROEMERINE_SMILES_VALID = "CN1CCC2=Cc3c4cc(OCO4)ccc3C2C1"
 
     for i in range(int(num_comp)):
         st.markdown(f"---")
         st.markdown(f"**Khảo sát Hợp chất #{i+1}**")
         col_a, col_b = st.columns([1, 2])
         c_name = col_a.text_input(f"Tên hợp chất #{i+1}:", value="Roemerine" if i==0 else f"Alkaloid_Derivative_{i+1}", key=f"sci_name_{i}")
-        c_smiles = col_b.text_input(f"Mã SMILES hợp chất #{i+1}:", value=ROEMERINE_SMILES_DEFAULT if i==0 else "", key=f"sci_smiles_{i}")
+        c_smiles = col_b.text_input(f"Mã SMILES hợp chất #{i+1}:", value=ROEMERINE_SMILES_VALID if i==0 else "", key=f"sci_smiles_{i}")
 
         col_c, col_d = st.columns(2)
         g_ache = col_c.number_input(f"Năng lượng liên kết ΔG AChE (kcal/mol) #{i+1}:", value=-8.80, format="%.2f", key=f"sci_ga_{i}")
@@ -600,12 +591,14 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         "Loại": "Thuốc chuẩn BACE1"
     })
 
-    fallback_triggered = False
+    error_smiles_list = []
 
     for item in compounds_input:
-        fp_test, props, is_fb = process_molecule_full(item["smiles"])
-        if is_fb:
-            fallback_triggered = True
+        fp_test, props = process_molecule_strict(item["smiles"])
+        
+        if fp_test is None or props is None:
+            error_smiles_list.append(item["name"])
+            continue
 
         tan_don = round(float(DataStructs.TanimotoSimilarity(fp_test, fp_donepezil)), 3) if fp_donepezil else 0.0
         tan_ver = round(float(DataStructs.TanimotoSimilarity(fp_test, fp_verubecestat)), 3) if fp_verubecestat else 0.0
@@ -632,8 +625,8 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             "Loại": "Hợp chất thử nghiệm"
         })
 
-    if fallback_triggered:
-        st.info("💡 Hệ thống đã chuẩn hóa và tự động đồng bộ hóa chuỗi không gian vòng cho hợp chất để xuất bảng dữ liệu và biểu đồ thành công.")
+    if error_smiles_list:
+        st.error(f"❌ Lỗi cấu trúc RDKit: Không thể phân tích mã SMILES của hợp chất: **{', '.join(error_smiles_list)}**. Vui lòng kiểm tra lại chuỗi ký tự SMILES.")
 
     # 5. Xuất Trực quan Bảng và Biểu đồ Khoa học
     if results_data:
