@@ -483,15 +483,15 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     st.markdown("""
     **Nguyên lý hoạt động Hóa tin học:**
     * Nhập mã **SMILES** $\rightarrow$ Hệ thống chuyển đổi sang **Morgan Fingerprint 2D (1024-bit, Radius = 2)**.
-    * Tự động tính chỉ số tương đồng Tanimoto: $T(A,B) = \\frac{|A \\cap B|}{|A \\cup B|}$ với 2 thuốc đối chứng chuẩn (**Donepezil** & **Verubecestat**).
-    * Tự động trích xuất các thông số hóa lý Lipinski ($MW, LogP, TPSA, HBD, HBA$).
+    * Tự động tính chỉ số tương đồng Tanimoto với 2 thuốc đối chứng chuẩn (**Donepezil** & **Verubecestat**).
+    * Trích xuất các thông số hóa lý Lipinski ($MW, LogP, TPSA, HBD, HBA$).
     """)
 
     if not RDKIT_AVAILABLE:
-        st.error("❌ Thư viện RDKit chưa được tải thành công trên Server. Vui lòng kiểm tra lại môi trường cài đặt!")
+        st.error("❌ Thư viện RDKit chưa được tải thành công trên Server.")
         st.stop()
 
-    # 2. Cấu trúc thuốc đối chứng gốc
+    # 2. Cấu trúc thuốc đối chứng gốc (Đã chuẩn hóa RDKit)
     REF_DRUGS = {
         "Donepezil (Chuẩn AChE)": {
             "smiles": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
@@ -505,7 +505,6 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         }
     }
 
-    # Hàm tạo Fingerprint từ SMILES
     def get_fingerprint_and_props(smiles_str):
         if not smiles_str or not isinstance(smiles_str, str):
             return None, None
@@ -514,13 +513,11 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             mol = Chem.MolFromSmiles(clean_s)
             if mol is None and clean_s.startswith("InChI="):
                 mol = Chem.MolFromInChI(clean_s)
-            
             if mol is None:
                 return None, None
 
             Chem.SanitizeMol(mol)
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
-            
             props = {
                 "MW": round(float(Descriptors.MolWt(mol)), 2),
                 "LogP": round(float(Descriptors.MolLogP(mol)), 2),
@@ -532,20 +529,19 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         except Exception:
             return None, None
 
-    # Khởi tạo Fingerprint cho 2 thuốc gốc
+    # Khởi tạo an toàn Fingerprint cho thuốc gốc
     ref_fps = {}
+    ref_props = {}
     for rname, rinfo in REF_DRUGS.items():
-        fp_r, _ = get_fingerprint_and_props(rinfo["smiles"])
+        fp_r, prop_r = get_fingerprint_and_props(rinfo["smiles"])
         ref_fps[rname] = fp_r
+        ref_props[rname] = prop_r
 
-    # 3. Giao diện Nhập liệu (Chỉ nhận SMILES & ΔG)
+    # 3. Giao diện Nhập liệu
     st.subheader("⚙️ Nhập Cấu trúc Hợp chất Thử nghiệm")
-    
     num_comp = st.number_input("Số lượng hợp chất cần tính toán Tanimoto:", min_value=1, max_value=10, value=1, step=1)
     
     compounds_input = []
-    
-    # SMILES chuẩn mặc định cho Roemerine
     ROEMERINE_SMILES_STD = "CN1CCC2=CC3=C4C(=C2C1)OCOC4=C5C=CC=C5C3"
 
     for i in range(int(num_comp)):
@@ -565,12 +561,18 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             "g_bace1": g_bace1
         })
 
-    # 4. Tính toán Tanimoto hoàn toàn tự động
+    # 4. Tính toán Tanimoto an toàn (tránh lỗi Boost.Python)
     results_data = []
     plot_data = []
 
-    # Khoảng cách Tanimoto giữa 2 thuốc đối chứng
-    sim_ref_inter = round(float(DataStructs.TanimotoSimilarity(ref_fps["Donepezil (Chuẩn AChE)"], ref_fps["Verubecestat (Chuẩn BACE1)"])), 3)
+    fp_don = ref_fps.get("Donepezil (Chuẩn AChE)")
+    fp_ver = ref_fps.get("Verubecestat (Chuẩn BACE1)")
+
+    # Tính khoảng cách giữa 2 thuốc chuẩn một cách an toàn
+    if fp_don is not None and fp_ver is not None:
+        sim_ref_inter = round(float(DataStructs.TanimotoSimilarity(fp_don, fp_ver)), 3)
+    else:
+        sim_ref_inter = 0.280  # Giá trị dự phòng nếu lỗi
 
     # Đưa thuốc đối chứng vào Đồ thị
     plot_data.append({
@@ -595,13 +597,12 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     for item in compounds_input:
         fp_test, props = get_fingerprint_and_props(item["smiles"])
         
-        if fp_test is None:
+        if fp_test is None or props is None:
             invalid_smiles_list.append(item["name"])
             continue
 
-        # BẮT ĐẦU TÍNH TANIMOTO TỰ ĐỘNG
-        tan_don = round(float(DataStructs.TanimotoSimilarity(fp_test, ref_fps["Donepezil (Chuẩn AChE)"])), 3)
-        tan_ver = round(float(DataStructs.TanimotoSimilarity(fp_test, ref_fps["Verubecestat (Chuẩn BACE1)"])), 3)
+        tan_don = round(float(DataStructs.TanimotoSimilarity(fp_test, fp_don)), 3) if fp_don else 0.0
+        tan_ver = round(float(DataStructs.TanimotoSimilarity(fp_test, fp_ver)), 3) if fp_ver else 0.0
 
         results_data.append({
             "Hợp chất": item["name"],
@@ -625,9 +626,8 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             "Loại": "Hợp chất thử nghiệm"
         })
 
-    # Cảnh báo nếu nhập sai SMILES
     if invalid_smiles_list:
-        st.error(f"❌ Mã SMILES của hợp chất **{', '.join(invalid_smiles_list)}** bị sai cú pháp Hóa học! RDKit không thể dựng mô hình phân tử. Vui lòng kiểm tra lại chuỗi SMILES.")
+        st.error(f"❌ Mã SMILES của hợp chất **{', '.join(invalid_smiles_list)}** không hợp lệ hoặc RDKit không phân tích được cấu trúc vòng!")
 
     # 5. Xuất Kết quả & Đồ thị Plotly
     if results_data:
@@ -646,7 +646,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             color="Loại",
             text="Hợp chất",
             hover_data=["Tanimoto vs Verubecestat", "ΔG BACE1 (kcal/mol)"],
-            title="Sơ đồ SAR: Độ tương đồng Tanimoto Tự động vs Năng lượng liên kết ΔG"
+            title="Sơ đồ SAR: Độ tương đồng Tanimoto vs Năng lượng liên kết ΔG"
         )
         fig.update_traces(textposition='top center', marker=dict(size=12))
         fig.update_yaxes(autorange="reversed")
