@@ -469,7 +469,6 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     
 
 elif page == "4. Phân tích cấu trúc (Toán)":
-    import math
     import pandas as pd
     import plotly.express as px
     import plotly.graph_objects as go
@@ -477,41 +476,35 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
     import streamlit as st
 
-    st.title("🧬 Phân tích Đa chiều Cấu trúc, Thông số Hansen & Năng lượng Gắn kết")
+    st.title("🧬 Phân tích Tương đồng Cấu trúc (Tanimoto) & Ái lực Liên kết")
     st.markdown("""
-    Hệ thống đánh giá và so sánh các **hợp chất bất kỳ** dựa trên **Mô hình 3 Trụ cột**:
-    1. **Tanimoto Similarity:** Độ tương đồng khung cấu trúc 2D (Morgan Fingerprint).
-    2. **Khoảng cách Hansen ($R_a$):** Độ tương đồng môi trường hòa tan & tương tác vi không gian ($\delta_d, \delta_p, \delta_h$).
-    3. **Ái lực Liên kết ($\Delta G$):** So sánh năng lượng Docking với 2 thuốc chuẩn gốc làm hệ quy chiếu (**Donepezil** & **Verubecestat**).
+    Hệ thống đánh giá và so sánh các **hợp chất thử nghiệm** dựa trên **2 Mô hình cốt lõi**:
+    1. **Tanimoto Similarity:** Độ tương đồng khung cấu trúc 2D (Morgan Fingerprint, radius=2, 1024 bits).
+    2. **Ái lực Liên kết ($\Delta G$):** So sánh năng lượng Docking trực tiếp với 2 thuốc chuẩn gốc làm hệ quy chiếu (**Donepezil** & **Verubecestat**).
     """)
 
     # 1. Cơ sở dữ liệu cố định: 2 Thuốc chuẩn gốc (Benchmark Standards)
     ref_drugs = {
         "Donepezil (Chuẩn AChE)": {
-            "cid": 3152,
-            "smiles": "COC1=C(C=C2C(=C1)CC(C2=O)CC3CCN(CC3)CC4=CC=CC=C4)OC",
+            "smiles": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
             "affinity_AChE": -11.5,
-            "affinity_BACE1": -7.2,
-            "hansen": {"d": 18.5, "p": 5.2, "h": 5.8}  # d: Dispersion, p: Polar, h: H-bond
+            "affinity_BACE1": -7.2
         },
         "Verubecestat (Chuẩn BACE1)": {
-            "cid": 51052212,
-            "smiles": "CS(=O)(=O)N1CCN(CC1)C2=C(C=C(C=C2)C3=CSC(=N3)N)F",
+            "smiles": "CS(=O)(=O)N1CCN(CC1)c2ccc(c3csc(N)n3)cc2F",
             "affinity_AChE": -6.8,
-            "affinity_BACE1": -10.4,
-            "hansen": {"d": 19.2, "p": 8.5, "h": 7.1}
+            "affinity_BACE1": -10.4
         }
     }
 
-    # Hàm tính Khoảng cách Hansen Ra
-    def calc_hansen_ra(h1, h2):
-        return round(math.sqrt(4 * (h1['d'] - h2['d'])**2 + (h1['p'] - h2['p'])**2 + (h1['h'] - h2['h'])**2), 2)
-
     # Hàm phân tích và trích xuất đặc trưng từ mã SMILES
     def analyze_molecule(smiles):
+        if not smiles or not isinstance(smiles, str):
+            return None, None
         try:
-            mol = Chem.MolFromSmiles(smiles)
-            if mol is None: return None, None
+            mol = Chem.MolFromSmiles(smiles.strip())
+            if mol is None: 
+                return None, None
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
             props = {
                 "MW": round(Descriptors.MolWt(mol), 2),
@@ -522,8 +515,14 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 "RotB": rdMolDescriptors.CalcNumRotatableBonds(mol)
             }
             return fp, props
-        except:
+        except Exception:
             return None, None
+
+    # Hàm tính Tanimoto an toàn (Khắc phục hoàn toàn lỗi Boost.Python.ArgumentError)
+    def safe_tanimoto(fp1, fp2):
+        if fp1 is None or fp2 is None:
+            return 0.0
+        return round(DataStructs.TanimotoSimilarity(fp1, fp2), 3)
 
     # Tính Fingerprint cho 2 thuốc chuẩn
     ref_fps = {}
@@ -548,24 +547,19 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 col_a, col_b = st.columns(2)
                 with col_a:
                     g_ache = st.number_input(f"ΔG AChE #{i+1} (kcal/mol):", value=-8.5, key=f"g_ache_{i}")
-                    hd = st.number_input(f"Hansen δd #{i+1}:", value=18.0, key=f"hd_{i}")
                 with col_b:
                     g_bace1 = st.number_input(f"ΔG BACE1 #{i+1} (kcal/mol):", value=-8.0, key=f"g_bace1_{i}")
-                    hp = st.number_input(f"Hansen δp #{i+1}:", value=5.0, key=f"hp_{i}")
-                
-                hh = st.number_input(f"Hansen δh #{i+1}:", value=5.0, key=f"hh_{i}")
 
                 test_compounds.append({
                     "Name": c_name,
                     "SMILES": c_smiles,
                     "g_ache": g_ache,
-                    "g_bace1": g_bace1,
-                    "hansen": {"d": hd, "p": hp, "h": hh}
+                    "g_bace1": g_bace1
                 })
 
         else:
             uploaded_file = st.file_uploader("Tải lên file CSV", type=["csv"])
-            st.caption("Cột yêu cầu trong CSV: `Name`, `SMILES`, `g_ache`, `g_bace1`, `hd`, `hp`, `hh`")
+            st.caption("Cột yêu cầu trong CSV: `Name`, `SMILES`, `g_ache`, `g_bace1`")
             if uploaded_file is not None:
                 df_upload = pd.read_csv(uploaded_file)
                 for _, row in df_upload.iterrows():
@@ -573,38 +567,28 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                         "Name": str(row.get("Name", "Hợp chất")),
                         "SMILES": str(row.get("SMILES", "")),
                         "g_ache": float(row.get("g_ache", -8.0)),
-                        "g_bace1": float(row.get("g_bace1", -8.0)),
-                        "hansen": {
-                            "d": float(row.get("hd", 18.0)),
-                            "p": float(row.get("hp", 5.0)),
-                            "h": float(row.get("hh", 5.0))
-                        }
+                        "g_bace1": float(row.get("g_bace1", -8.0))
                     })
             else:
-                # Dữ liệu mặc định nếu người dùng chưa tải file
                 st.info("Đang hiển thị mẫu thử nghiệm mặc định bên dưới:")
                 test_compounds.append({
                     "Name": "Hợp chất Mẫu A",
                     "SMILES": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC",
                     "g_ache": -8.5,
-                    "g_bace1": -8.0,
-                    "hansen": {"d": 18.0, "p": 5.0, "h": 5.0}
+                    "g_bace1": -8.0
                 })
 
-    # 3. Tính toán Fingerprint, Tanimoto & Hansen Distance
+    # 3. Tính toán Tanimoto Similarity
     processed_results = []
     plot_points = []
 
     # Điểm dữ liệu của 2 thuốc chuẩn
-    don_hansen = ref_drugs["Donepezil (Chuẩn AChE)"]["hansen"]
-    ver_hansen = ref_drugs["Verubecestat (Chuẩn BACE1)"]["hansen"]
-    don_ver_ra = calc_hansen_ra(don_hansen, ver_hansen)
-    don_ver_sim = round(DataStructs.TanimotoSimilarity(ref_fps["Donepezil (Chuẩn AChE)"], ref_fps["Verubecestat (Chuẩn BACE1)"]), 3)
+    don_ver_sim = safe_tanimoto(ref_fps["Donepezil (Chuẩn AChE)"], ref_fps["Verubecestat (Chuẩn BACE1)"])
 
     plot_points.append({
         "Name": "⭐ Donepezil (Chuẩn AChE)",
         "Tanimoto_Donepezil": 1.0,
-        "Hansen_Ra_Donepezil": 0.0,
+        "Tanimoto_Verubecestat": don_ver_sim,
         "ΔG_AChE": ref_drugs["Donepezil (Chuẩn AChE)"]["affinity_AChE"],
         "ΔG_BACE1": ref_drugs["Donepezil (Chuẩn AChE)"]["affinity_BACE1"],
         "Type": "Thuốc chuẩn AChE"
@@ -612,7 +596,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     plot_points.append({
         "Name": "⭐ Verubecestat (Chuẩn BACE1)",
         "Tanimoto_Donepezil": don_ver_sim,
-        "Hansen_Ra_Donepezil": don_ver_ra,
+        "Tanimoto_Verubecestat": 1.0,
         "ΔG_AChE": ref_drugs["Verubecestat (Chuẩn BACE1)"]["affinity_AChE"],
         "ΔG_BACE1": ref_drugs["Verubecestat (Chuẩn BACE1)"]["affinity_BACE1"],
         "Type": "Thuốc chuẩn BACE1"
@@ -626,31 +610,24 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             invalid_smiles.append(comp["Name"])
             continue
 
-        ra_don = calc_hansen_ra(comp["hansen"], don_hansen)
-        ra_ver = calc_hansen_ra(comp["hansen"], ver_hansen)
-
-        sim_don = round(DataStructs.TanimotoSimilarity(fp, ref_fps["Donepezil (Chuẩn AChE)"]), 3)
-        sim_ver = round(DataStructs.TanimotoSimilarity(fp, ref_fps["Verubecestat (Chuẩn BACE1)"]), 3)
+        sim_don = safe_tanimoto(fp, ref_fps["Donepezil (Chuẩn AChE)"])
+        sim_ver = safe_tanimoto(fp, ref_fps["Verubecestat (Chuẩn BACE1)"])
 
         processed_results.append({
             "Hợp chất": comp["Name"],
             "Tanimoto vs Don": sim_don,
-            "Hansen Ra vs Don": ra_don,
             "Tanimoto vs Ver": sim_ver,
-            "Hansen Ra vs Ver": ra_ver,
             "ΔG AChE": comp["g_ache"],
             "ΔG BACE1": comp["g_bace1"],
-            "δd": comp["hansen"]["d"],
-            "δp": comp["hansen"]["p"],
-            "δh": comp["hansen"]["h"],
             "MW": props["MW"] if props else None,
-            "LogP": props["LogP"] if props else None
+            "LogP": props["LogP"] if props else None,
+            "TPSA": props["TPSA"] if props else None
         })
 
         plot_points.append({
             "Name": comp["Name"],
             "Tanimoto_Donepezil": sim_don,
-            "Hansen_Ra_Donepezil": ra_don,
+            "Tanimoto_Verubecestat": sim_ver,
             "ΔG_AChE": comp["g_ache"],
             "ΔG_BACE1": comp["g_bace1"],
             "Type": "Hợp chất thử nghiệm"
@@ -663,59 +640,57 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         st.error("Chưa có hợp chất hợp lệ nào để hiển thị. Vui lòng kiểm tra lại thông tin nhập ở Sidebar.")
     else:
         # 4. Dashboard chỉ số nhanh
-        st.subheader("📌 Tổng quan Các chỉ số Đa chiều")
+        st.subheader("📌 Tổng quan Các chỉ số Cấu trúc & Ái lực")
         selected_target_name = st.selectbox("Chọn hợp chất xem nhanh chỉ số:", [r["Hợp chất"] for r in processed_results])
         target_res = next(r for r in processed_results if r["Hợp chất"] == selected_target_name)
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Tanimoto vs Donepezil", f"{target_res['Tanimoto vs Don']*100:.1f}%")
-        c2.metric("Hansen Distance Ra (Donepezil)", f"{target_res['Hansen Ra vs Don']}", help="Càng nhỏ càng tương đồng về môi trường hòa tan/hóa lý")
+        c2.metric("ΔG AChE (kcal/mol)", f"{target_res['ΔG AChE']}")
         c3.metric("Tanimoto vs Verubecestat", f"{target_res['Tanimoto vs Ver']*100:.1f}%")
-        c4.metric("Hansen Distance Ra (Verubecestat)", f"{target_res['Hansen Ra vs Ver']}", help="Càng nhỏ càng tương đồng")
+        c4.metric("ΔG BACE1 (kcal/mol)", f"{target_res['ΔG BACE1']}")
 
-        # 5. Đồ thị 2D Spatial Plot: Tanimoto vs Hansen Distance
-        st.subheader("🎯 Đồ thị Không gian Tương đồng: Tanimoto vs Hansen Distance")
-        st.markdown("Vùng lý tưởng cho dẫn xuất tiềm năng so với Donepezil: **Tanimoto cao ($\ge 0.5$)** và **Hansen Distance $R_a$ nhỏ ($\le 5.0$)**.")
-
+        # 5. Đồ thị Không gian Tương đồng Tanimoto & Ái lực Gắn kết
+        st.subheader("🎯 Đồ thị Mối tương quan Cấu trúc (Tanimoto) & Ái lực gắn kết (ΔG)")
+        
         df_plot = pd.DataFrame(plot_points)
         fig_scatter = px.scatter(
             df_plot, 
             x="Tanimoto_Donepezil", 
-            y="Hansen_Ra_Donepezil", 
+            y="ΔG_AChE", 
             color="Type", 
             text="Name",
             size_max=15,
-            hover_data=["ΔG_AChE", "ΔG_BACE1"],
+            hover_data=["Tanimoto_Verubecestat", "ΔG_BACE1"],
             labels={
                 "Tanimoto_Donepezil": "Độ tương đồng Tanimoto vs Donepezil (0 - 1)", 
-                "Hansen_Ra_Donepezil": "Khoảng cách Hansen Ra vs Donepezil (Càng thấp càng giống)"
+                "ΔG_AChE": "Năng lượng Gắn kết AChE ΔG (kcal/mol - Càng âm càng mạnh)"
             },
-            title="So sánh Cấu trúc (Tanimoto) và Đặc tính Hòa tan/Hóa lý (Hansen Ra) đối chiếu với Donepezil"
+            title="Tương quan giữa Tương đồng Cấu trúc vs Donepezil và Ái lực Liên kết AChE"
         )
         fig_scatter.update_traces(textposition='top center', marker=dict(size=12))
+        fig_scatter.update_yaxes(autorange="reversed")  # Năng lượng càng âm hiển thị càng cao
         st.plotly_chart(fig_scatter, use_container_width=True)
 
         # 6. Bảng dữ liệu tổng hợp
-        st.subheader("📊 Bảng Báo cáo Tổng hợp (Full Metrics Report)")
+        st.subheader("📊 Bảng Báo cáo Tổng hợp (Full Tanimoto & Docking Metrics)")
 
         ref_table_rows = [
             {
                 "Hợp chất": "⭐ Donepezil (Chuẩn AChE)",
-                "Tanimoto vs Don": 1.0, "Hansen Ra vs Don": 0.0,
-                "Tanimoto vs Ver": don_ver_sim, "Hansen Ra vs Ver": don_ver_ra,
+                "Tanimoto vs Don": 1.0, 
+                "Tanimoto vs Ver": don_ver_sim,
                 "ΔG AChE": ref_drugs["Donepezil (Chuẩn AChE)"]["affinity_AChE"],
                 "ΔG BACE1": ref_drugs["Donepezil (Chuẩn AChE)"]["affinity_BACE1"],
-                "δd": don_hansen['d'], "δp": don_hansen['p'], "δh": don_hansen['h'],
-                "MW": 379.5, "LogP": 4.27
+                "MW": 379.5, "LogP": 4.27, "TPSA": 38.8
             },
             {
                 "Hợp chất": "⭐ Verubecestat (Chuẩn BACE1)",
-                "Tanimoto vs Don": don_ver_sim, "Hansen Ra vs Don": don_ver_ra,
-                "Tanimoto vs Ver": 1.0, "Hansen Ra vs Ver": 0.0,
+                "Tanimoto vs Don": don_ver_sim, 
+                "Tanimoto vs Ver": 1.0,
                 "ΔG AChE": ref_drugs["Verubecestat (Chuẩn BACE1)"]["affinity_AChE"],
                 "ΔG BACE1": ref_drugs["Verubecestat (Chuẩn BACE1)"]["affinity_BACE1"],
-                "δd": ver_hansen['d'], "δp": ver_hansen['p'], "δh": ver_hansen['h'],
-                "MW": 409.4, "LogP": 2.15
+                "MW": 409.4, "LogP": 2.15, "TPSA": 88.5
             }
         ]
 
@@ -723,29 +698,30 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         df_table = pd.DataFrame(full_table_data).set_index("Hợp chất")
 
         st.dataframe(
-            df_table.style.highlight_min(subset=['Hansen Ra vs Don', 'Hansen Ra vs Ver'], color='lightblue')
+            df_table.style.highlight_max(subset=['Tanimoto vs Don', 'Tanimoto vs Ver'], color='lightblue')
                           .highlight_min(subset=['ΔG AChE', 'ΔG BACE1'], color='lightgreen'), 
             use_container_width=True
         )
 
-        # 7. Biện luận Chuyên sâu SAR & Hansen Profile
-        st.subheader("💡 Biện luận Chuyên sâu (SAR & Hansen Profile)")
+        # 7. Biện luận Chuyên sâu SAR
+        st.subheader("💡 Biện luận Chuyên sâu (Structure-Activity Relationship - SAR)")
         
-        ra_donepezil = target_res['Hansen Ra vs Don']
+        sim_don_val = target_res['Tanimoto vs Don']
+        sim_ver_val = target_res['Tanimoto vs Ver']
         
         st.markdown(f"**Đánh giá cho hợp chất đang chọn:** `{target_res['Hợp chất']}`")
         
-        if ra_donepezil <= 3.5:
-            st.success(f"• **Tương quan Hansen tuyệt vời với Donepezil** ($R_a = {ra_donepezil} \le 3.5$): Phân tử có hồ sơ hòa tan, độ phân cực ($\delta_p$) và khả năng tạo liên kết Hydro ($\delta_h$) tương đồng cao với Donepezil, tạo điều kiện thuận lợi cho tính thấm qua hàng rào sinh học (BBB).")
-        elif ra_donepezil <= 6.0:
-            st.info(f"• **Tương quan Hansen trung bình với Donepezil** ($R_a = {ra_donepezil}$): Phân tử giữ được các đặc tính hòa tan cơ bản nhưng có sự thay đổi nhẹ về độ phân cực hoặc liên kết hydro.")
+        if sim_don_val >= 0.5:
+            st.success(f"• **Tương đồng cấu trúc cao với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất sở hữu nhiều đặc điểm/khung giàn tương đồng với thuốc chuẩn Donepezil, có khả năng cao tương tác với túi gắn kết của AChE.")
+        elif sim_don_val >= 0.3:
+            st.info(f"• **Tương đồng cấu trúc trung bình với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất mang một số nhóm thế hoặc bộ khung tương tự Donepezil.")
         else:
-            st.warning(f"• **Khoảng cách Hansen lớn** ($R_a = {ra_donepezil}$): Phân tử có đặc tính môi trường hòa tan khá khác biệt so với Donepezil.")
+            st.warning(f"• **Độ tương đồng cấu trúc thấp so với Donepezil** (Tanimoto = {sim_don_val*100:.1f}%): Hợp chất mang bộ khung cấu trúc mới biệt lập.")
 
         if target_res['ΔG AChE'] <= ref_drugs["Donepezil (Chuẩn AChE)"]["affinity_AChE"]:
             st.success(f"• **Ái lực AChE vượt trội:** Năng lượng liên kết ($\Delta G = {target_res['ΔG AChE']}$ kcal/mol) mạnh hơn hoặc tương đương thuốc chuẩn Donepezil ({ref_drugs['Donepezil (Chuẩn AChE)']['affinity_AChE']} kcal/mol).")
         else:
-            st.info(f"• **Ái lực AChE:** $\Delta G = {target_res['ΔG AChE']}$ kcal/mol (Donepezil chuẩn: {ref_drugs['Donepezil (Chuẩn AChE)']['affinity_AChE']} kcal/mol).")
+            st.info(f"• **Ái lực AChE:** $\Delta G = {target_res['ΔG AChE']}$ kcal/mol (Thuốc chuẩn Donepezil: {ref_drugs['Donepezil (Chuẩn AChE)']['affinity_AChE']} kcal/mol).")
 elif page == "5. Tối ưu Dung môi (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 5")
