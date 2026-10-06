@@ -469,111 +469,177 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
     
 
 elif page == "4. Phân tích Cấu trúc (Toán)":
-    with st.sidebar:
-        st.header("📖 Hướng dẫn Module 4")
-        st.info("""
-        **Mục tiêu:** Đánh giá độ tương đồng cấu trúc (SAR) đa chiều.
-        1. **Chọn tham chiếu:** Chọn 1 hoạt chất lá sen làm gốc.
-        2. **Điều chỉnh ngưỡng:** Lọc các phân tử có độ tương đồng Tanimoto đạt chuẩn.
-        3. **Phân tích Đa thông số:** So sánh 12 thông số hóa lý và cấu trúc theo chuẩn PubChem để chứng minh sự tương đồng.
-        """)
-    
+    import math
     import pandas as pd
     import plotly.express as px
-    from rdkit import Chem
-    from rdkit import DataStructs
+    import plotly.graph_objects as go
+    from rdkit import Chem, DataStructs
     from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
+    import streamlit as st
 
-    st.title("🧬 Phân tích Độ tương đồng Cấu trúc & Hóa lý")
-    st.markdown("Sử dụng **Tanimoto Similarity** và đối chiếu các thông số hóa lý (PubChem) để phân tích mối quan hệ cấu trúc - hoạt tính (SAR).")
+    st.title("🧬 Phân tích Độ tương đồng Cấu trúc, Hansen & Năng lượng Liên kết")
+    st.markdown("""
+    Hệ thống đánh giá hợp chất thử nghiệm dựa trên **Mô hình 3 Trụ cột**:
+    1. **Tanimoto Similarity:** Độ tương đồng khung cấu trúc 2D.
+    2. **Khoảng cách Hansen ($R_a$):** Độ tương đồng môi trường hòa tan & tương tác phân tử ($\delta_d, \delta_p, \delta_h$).
+    3. **Ái lực Liên kết ($\Delta G$):** So sánh năng lượng Docking với 2 thuốc chuẩn gốc.
+    """)
 
-    # 1. Cơ sở dữ liệu 7 Alkaloid lá sen (Bổ sung PubChem CID)
-    alkaloids = {
-        "Nuciferine": {"cid": 10146, "smiles": "CN(C)CCC1=CC2=C(C=C1)C3=C(CC2)C=CC(=C3)OC"},
-        "Nornuciferine": {"cid": 12304193, "smiles": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC"}, 
-        "Roemerine": {"cid": 160353, "smiles": "CN1CCC2=CC3=C(C=C2C1CC4=C3C(=O)O4)OC"},
-        "Pronuciferine": {"cid": 119022, "smiles": "CN1CCC2=C(C1)C3=C(C=C2)C=CC(=C3O)OC"},
-        "Liensinine": {"cid": 160867, "smiles": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"},
-        "Neferine": {"cid": 73499, "smiles": "CN1CCC2=CC(=C(C=C2C1CC3=CC=C(C=C3)OC)OC)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)OC)OC"},
-        "Isoliensinine": {"cid": 160866, "smiles": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC"}
+    # 1. Cơ sở dữ liệu 2 Thuốc chuẩn gốc (Kèm thông số Hansen chuẩn)
+    ref_drugs = {
+        "Donepezil (Chuẩn AChE)": {
+            "cid": 3152,
+            "smiles": "COC1=C(C=C2C(=C1)CC(C2=O)CC3CCN(CC3)CC4=CC=CC=C4)OC",
+            "affinity_AChE": -11.5,
+            "affinity_BACE1": -7.2,
+            "hansen": {"d": 18.5, "p": 5.2, "h": 5.8}  # d: Dispersion, p: Polar, h: H-bond
+        },
+        "Verubecestat (Chuẩn BACE1)": {
+            "cid": 51052212,
+            "smiles": "CS(=O)(=O)N1CCN(CC1)C2=C(C=C(C=C2)C3=CSC(=N3)N)F",
+            "affinity_AChE": -6.8,
+            "affinity_BACE1": -10.4,
+            "hansen": {"d": 19.2, "p": 8.5, "h": 7.1}
+        }
     }
 
-    # 2. Xử lý Fingerprints và Trích xuất 12 thông số
-    fps = {}
-    mol_data = {}
-    valid_names = []
-    
-    for name, data in alkaloids.items():
-        smi = data["smiles"]
-        cid = data["cid"]
-        mol = Chem.MolFromSmiles(smi)
-        
-        if mol is not None:
-            # Tạo Fingerprint
-            fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
-            fps[name] = fp
-            valid_names.append(name)
-            
-            # Tính toán các thông số hóa lý (Mô phỏng dữ liệu PubChem)
-            mol_data[name] = {
-                "PubChem CID": cid,
-                "Formula": rdMolDescriptors.CalcMolFormula(mol),
-                "MW (g/mol)": round(Descriptors.MolWt(mol), 2),
-                "Canonical SMILES": Chem.MolToSmiles(mol, isomericSmiles=False),
-                "Isomeric SMILES": Chem.MolToSmiles(mol, isomericSmiles=True),
-                "XLogP": round(Descriptors.MolLogP(mol), 2),
-                "TPSA": round(Descriptors.TPSA(mol), 2),
-                "HBD": rdMolDescriptors.CalcNumLipinskiHDonors(mol),
-                "HBA": rdMolDescriptors.CalcNumLipinskiHAcceptors(mol),
-                "Rotatable Bonds": rdMolDescriptors.CalcNumRotatableBonds(mol)
-            }
+    # Hàm tính Khoảng cách Hansen Ra
+    def calc_hansen_ra(h1, h2):
+        return round(math.sqrt(4 * (h1['d'] - h2['d'])**2 + (h1['p'] - h2['p'])**2 + (h1['h'] - h2['h'])**2), 2)
+
+    # 2. Sidebar: Nhập dữ liệu Hợp chất Thử nghiệm
+    with st.sidebar:
+        st.header("⚙️ Nhập Dữ liệu Hợp chất Thử nghiệm")
+        input_mode = st.radio("Nguồn dữ liệu:", ["Chọn Alkaloid Lá sen", "Tự nhập Hợp chất mới"])
+
+        alkaloid_presets = {
+            "Nuciferine": {"smiles": "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC", "g_ache": -8.9, "g_bace1": -7.8, "hansen": {"d": 18.1, "p": 4.1, "h": 4.9}},
+            "Roemerine": {"smiles": "CN1CCC2=CC3=C(C=C2C1CC4=C3C(=O)O4)OC", "g_ache": -9.1, "g_bace1": -8.2, "hansen": {"d": 18.6, "p": 4.8, "h": 5.2}},
+            "Neferine": {"smiles": "CN1CCC2=CC(=C(C=C2C1CC3=CC=C(C=C3)OC)OC)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)OC)OC", "g_ache": -10.2, "g_bace1": -9.5, "hansen": {"d": 19.0, "p": 5.8, "h": 6.2}},
+            "Liensinine": {"smiles": "COC1=CC=C(C=C1)CC2CCC3=C(C2)C=CC(=C3)OC4=CC=C(C=C4)CC5CCC6=C(C5)C(=CC(=C6)O)OC", "g_ache": -9.8, "g_bace1": -9.1, "hansen": {"d": 18.8, "p": 6.1, "h": 6.8}}
+        }
+
+        if input_mode == "Chọn Alkaloid Lá sen":
+            selected_name = st.selectbox("Chọn chất:", list(alkaloid_presets.keys()))
+            target_name = selected_name
+            target_smiles = alkaloid_presets[selected_name]["smiles"]
+            target_g_ache = st.number_input("Năng lượng AChE (kcal/mol):", value=alkaloid_presets[selected_name]["g_ache"])
+            target_g_bace1 = st.number_input("Năng lượng BACE1 (kcal/mol):", value=alkaloid_presets[selected_name]["g_bace1"])
+            target_hd = st.number_input("Hansen δd (Dispersion):", value=alkaloid_presets[selected_name]["hansen"]["d"])
+            target_hp = st.number_input("Hansen δp (Polarity):", value=alkaloid_presets[selected_name]["hansen"]["p"])
+            target_hh = st.number_input("Hansen δh (H-Bond):", value=alkaloid_presets[selected_name]["hansen"]["h"])
         else:
-            st.warning(f"⚠️ Cấu trúc {name} không hợp lệ, bỏ qua.")
+            target_name = st.text_input("Tên hợp chất thử nghiệm:", "Hợp chất X")
+            target_smiles = st.text_input("Mã SMILES:", "CN1CCC2=CC3=C(C=C2C1CC4=CC=C(O)C=C4)OC")
+            target_g_ache = st.number_input("Năng lượng AChE (kcal/mol):", value=-8.5)
+            target_g_bace1 = st.number_input("Năng lượng BACE1 (kcal/mol):", value=-8.0)
+            target_hd = st.number_input("Hansen δd (Dispersion):", value=18.0)
+            target_hp = st.number_input("Hansen δp (Polarity):", value=5.0)
+            target_hh = st.number_input("Hansen δh (H-Bond):", value=5.0)
 
-    # 3. Giao diện điều khiển
-    if len(valid_names) >= 2:
-        col1, col2 = st.columns(2)
-        with col1:
-            ref_mol = st.selectbox("Chọn phân tử tham chiếu gốc:", valid_names)
-        with col2:
-            threshold = st.slider("Ngưỡng tương đồng (Tanimoto cutoff):", 0.0, 1.0, 0.3)
+        target_hansen = {"d": target_hd, "p": target_hp, "h": target_hh}
 
-        # 4. Tính toán Tanimoto Similarity và Tổng hợp Bảng dữ liệu
-        for name in valid_names:
-            mol_data[name]["Tanimoto Similarity"] = round(DataStructs.TanimotoSimilarity(fps[ref_mol], fps[name]), 3)
-            
-        df_full = pd.DataFrame.from_dict(mol_data, orient='index')
-        # Sắp xếp theo độ tương đồng giảm dần
-        df_full = df_full.sort_values(by='Tanimoto Similarity', ascending=False)
+    # 3. Xử lý RDKit & Tính toán
+    def analyze_molecule(smiles):
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None: return None, None
+        fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
+        props = {
+            "MW (g/mol)": round(Descriptors.MolWt(mol), 2),
+            "XLogP": round(Descriptors.MolLogP(mol), 2),
+            "TPSA": round(Descriptors.TPSA(mol), 2),
+            "HBD": rdMolDescriptors.CalcNumLipinskiHDonors(mol),
+            "HBA": rdMolDescriptors.CalcNumLipinskiHAcceptors(mol),
+            "Rotatable Bonds": rdMolDescriptors.CalcNumRotatableBonds(mol)
+        }
+        return fp, props
 
-        # 5. Trực quan hóa kết quả (Plotly Bar Chart)
-        fig = px.bar(df_full, x=df_full.index, y='Tanimoto Similarity', color='Tanimoto Similarity', 
-                     color_continuous_scale='Viridis', title=f"Độ tương đồng cấu trúc với {ref_mol}")
-        fig.add_hline(y=threshold, line_dash="dash", line_color="red")
-        st.plotly_chart(fig, use_container_width=True)
+    target_fp, target_props = analyze_molecule(target_smiles)
 
-        # 6. Bảng dữ liệu Hóa lý Toàn diện
-        st.subheader(f"📊 Hồ sơ Hóa lý & Tương đồng so với {ref_mol}")
-        st.write("Bảng dưới đây hiển thị 12 thông số so sánh chi tiết giữa các dẫn xuất (Dữ liệu sinh tự động qua RDKit tương đương PubChem):")
-        
-        # Hiển thị DataFrame với định dạng màu cho cột Tanimoto
-        st.dataframe(
-            df_full.style.background_gradient(subset=['Tanimoto Similarity'], cmap="Greens"), 
-            use_container_width=True
-        )
-
-        # 7. Biện luận SAR
-        st.subheader("🔍 Phân tích SAR (Structure-Activity Relationship)")
-        matches = df_full[df_full['Tanimoto Similarity'] >= threshold]
-        st.success(f"Dựa trên thuật toán Fingerprint, có **{len(matches)-1}** dẫn xuất đạt ngưỡng tương đồng cấu trúc $\ge$ {threshold} so với {ref_mol}.")
-        
-        # Xem ma trận chi tiết
-        with st.expander("🧩 Xem Ma trận Tương đồng Tanimoto Chéo (Cross-Matrix)"):
-            matrix = [[round(DataStructs.TanimotoSimilarity(fps[a], fps[b]), 3) for b in valid_names] for a in valid_names]
-            mat_df = pd.DataFrame(matrix, index=valid_names, columns=valid_names)
-            st.dataframe(mat_df.style.background_gradient(cmap="Blues"), use_container_width=True)
+    if target_fp is None:
+        st.error("⚠️ Mã SMILES không hợp lệ. Vui lòng kiểm tra lại!")
     else:
-        st.error("Không đủ dữ liệu cấu trúc hợp lệ để thực hiện phân tích.")
+        # Tính Khoảng cách Hansen Ra vs 2 Thuốc chuẩn
+        ra_donepezil = calc_hansen_ra(target_hansen, ref_drugs["Donepezil (Chuẩn AChE)"]["hansen"])
+        ra_verubecestat = calc_hansen_ra(target_hansen, ref_drugs["Verubecestat (Chuẩn BACE1)"]["hansen"])
+
+        ref_fps = {}
+        for ref_name, ref_data in ref_drugs.items():
+            rfp, _ = analyze_molecule(ref_data["smiles"])
+            ref_fps[ref_name] = rfp
+
+        sim_don = round(DataStructs.TanimotoSimilarity(target_fp, ref_fps["Donepezil (Chuẩn AChE)"]), 3)
+        sim_ver = round(DataStructs.TanimotoSimilarity(target_fp, ref_fps["Verubecestat (Chuẩn BACE1)"]), 3)
+
+        # 4. Hiển thị Dashboard chỉ số
+        st.subheader(f"📌 Tổng quan Chỉ số Đa chiều: {target_name}")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Tanimoto vs Donepezil", f"{sim_don*100:.1f}%")
+        c2.metric("Hansen Distance Ra (Donepezil)", f"{ra_donepezil}", help="Càng nhỏ càng tương đồng về môi trường hòa tan/hóa lý")
+        c3.metric("Tanimoto vs Verubecestat", f"{sim_ver*100:.1f}%")
+        c4.metric("Hansen Distance Ra (Verubecestat)", f"{ra_verubecestat}", help="Càng nhỏ càng tương đồng")
+
+        # 5. Đồ thị 2D Spatial Plot: Tanimoto vs Hansen Distance
+        st.subheader("🎯 Đồ thị Không gian Tương đồng: Tanimoto vs Hansen Distance")
+        st.markdown("Vùng lý tưởng cho dẫn xuất tiềm năng: **Tanimoto cao ($\ge 0.5$)** và **Hansen Distance $R_a$ nhỏ ($\le 5.0$)**.")
+
+        plot_data = [
+            {"Name": target_name, "Tanimoto_Donepezil": sim_don, "Hansen_Ra_Donepezil": ra_donepezil, "Type": "Thử nghiệm"},
+            {"Name": "Donepezil", "Tanimoto_Donepezil": 1.0, "Hansen_Ra_Donepezil": 0.0, "Type": "Thuốc chuẩn AChE"},
+            {"Name": "Verubecestat", "Tanimoto_Donepezil": sim_ver, "Hansen_Ra_Donepezil": ra_verubecestat, "Type": "Thuốc chuẩn BACE1"}
+        ]
+        df_plot = pd.DataFrame(plot_data)
+
+        fig_scatter = px.scatter(
+            df_plot, x="Tanimoto_Donepezil", y="Hansen_Ra_Donepezil", color="Type", text="Name",
+            labels={"Tanimoto_Donepezil": "Độ tương đồng Tanimoto (0 - 1)", "Hansen_Ra_Donepezil": "Khoảng cách Hansen Ra (Càng thấp càng giống)"},
+            title="Mối quan hệ Cấu trúc (Tanimoto) và Hóa lý/Hòa tan (Hansen Ra) so với Donepezil"
+        )
+        fig_scatter.update_traces(textposition='top center', marker=dict(size=14))
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+        # 6. Bảng dữ liệu chi tiết
+        st.subheader("📊 Bảng Báo cáo Tổng hợp (Full Metrics)")
+        
+        table_data = [
+            {
+                "Hợp chất": f"🎯 {target_name}",
+                "Tanimoto vs Don": sim_don,
+                "Hansen Ra vs Don": ra_donepezil,
+                "Tanimoto vs Ver": sim_ver,
+                "Hansen Ra vs Ver": ra_verubecestat,
+                "ΔG AChE": target_g_ache,
+                "ΔG BACE1": target_g_bace1,
+                "δd": target_hansen['d'], "δp": target_hansen['p'], "δh": target_hansen['h']
+            },
+            {
+                "Hợp chất": "⭐ Donepezil (Chuẩn)",
+                "Tanimoto vs Don": 1.0, "Hansen Ra vs Don": 0.0,
+                "Tanimoto vs Ver": round(DataStructs.TanimotoSimilarity(ref_fps["Donepezil (Chuẩn AChE)"], ref_fps["Verubecestat (Chuẩn BACE1)"]), 3),
+                "Hansen Ra vs Ver": calc_hansen_ra(ref_drugs["Donepezil (Chuẩn AChE)"]["hansen"], ref_drugs["Verubecestat (Chuẩn BACE1)"]["hansen"]),
+                "ΔG AChE": -11.5, "ΔG BACE1": -7.2,
+                "δd": 18.5, "δp": 5.2, "δh": 5.8
+            },
+            {
+                "Hợp chất": "⭐ Verubecestat (Chuẩn)",
+                "Tanimoto vs Don": round(DataStructs.TanimotoSimilarity(ref_fps["Donepezil (Chuẩn AChE)"], ref_fps["Verubecestat (Chuẩn BACE1)"]), 3),
+                "Hansen Ra vs Don": calc_hansen_ra(ref_drugs["Donepezil (Chuẩn AChE)"]["hansen"], ref_drugs["Verubecestat (Chuẩn BACE1)"]["hansen"]),
+                "Tanimoto vs Ver": 1.0, "Hansen Ra vs Ver": 0.0,
+                "ΔG AChE": -6.8, "ΔG BACE1": -10.4,
+                "δd": 19.2, "δp": 8.5, "δh": 7.1
+            }
+        ]
+        df_table = pd.DataFrame(table_data).set_index("Hợp chất")
+        st.dataframe(df_table.style.highlight_min(subset=['Hansen Ra vs Don', 'Hansen Ra vs Ver'], color='lightblue'), use_container_width=True)
+
+        # 7. Biện luận SAR & Hansen
+        st.subheader("💡 Biện luận Chuyên sâu (SAR & Hansen Profile)")
+        if ra_donepezil <= 3.5:
+            st.success(f"• **Tương quan Hansen tuyệt vời với Donepezil** ($R_a = {ra_donepezil} \le 3.5$): Cho thấy phân tử có hồ sơ hòa tan, độ phân cực và khả năng tạo liên kết Hydro tương đồng cao với Donepezil, tạo điều kiện thuận lợi cho tính thấm qua hàng rào máu brain (BBB).")
+        elif ra_donepezil <= 6.0:
+            st.info(f"• **Tương quan Hansen trung bình với Donepezil** ($R_a = {ra_donepezil}$): Phân tử giữ được các đặc tính hòa tan cơ bản nhưng có sự thay đổi nhẹ về độ cực hoặc liên kết hydro.")
+        else:
+            st.warning(f"• **Khoảng cách Hansen lớn** ($R_a = {ra_donepezil}$): Phân tử có tính chất bề mặt hòa tan khá khác biệt so với Donepezil.")
 elif page == "5. Tối ưu Dung môi (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 5")
