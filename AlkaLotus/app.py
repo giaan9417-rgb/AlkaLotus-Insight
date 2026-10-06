@@ -468,7 +468,7 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
 
     
 
-elif page == "4. Phân tích Cấu trúc (Toán)":
+elif page == "4. Phân tích cấu trúc (Toán)":
     import math
     import pandas as pd
     import plotly.express as px
