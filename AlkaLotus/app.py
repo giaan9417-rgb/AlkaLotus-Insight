@@ -474,50 +474,35 @@ elif page == "4. Phân tích cấu trúc (Toán)":
     import urllib.parse
     import urllib.request
 
-    # Kiểm tra thư viện RDKit
+    # Kiểm tra an toàn thư viện RDKit
     try:
         from rdkit import Chem, DataStructs
         from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
         RDKIT_AVAILABLE = True
-    except ImportError:
+    except Exception:
         RDKIT_AVAILABLE = False
 
     st.title("🧬 Phân tích Tương đồng Cấu trúc (Tanimoto) & Ái lực Liên kết")
     st.markdown("""
     **Mô hình toán học & Hóa tin học:**
-    * **Tanimoto Similarity:** Tính toán chỉ số tương đồng $T(A,B) = \\frac{\vert{}A \\cap B\vert{}}{\vert{}A \\cup B\vert{}}$ dựa trên Fingerprint Morgan 2D (Radius=2, 1024-bits).
-    * **Thông số Hóa lý:** Tính Khối lượng phân tử ($MW$), hệ số phân bố ($LogP$), diện tích bề mặt cực ($TPSA$), số liên kết hydro donor/acceptor.
+    * **Tanimoto Similarity:** Tính toán tự động chỉ số tương đồng $T(A,B) = \\frac{\vert{}A \\cap B\vert{}}{\vert{}A \\cup B\vert{}}$ từ Fingerprint Morgan 2D (1024-bits).
+    * **Thông số Hóa lý:** Tự động trích xuất $MW$, $LogP$, $TPSA$, $HBD$, $HBA$ dựa trên cấu trúc phân tử người dùng nhập.
     """)
 
-    # 1. Cơ sở dữ liệu Alkaloid lá sen & Thuốc chuẩn Offline (Chuẩn hóa SMILES)
+    # 1. Cơ sở dữ liệu chuẩn offline
     OFFLINE_DATABASE = {
         "nuciferine": "CN1CCC2=C3C1CC4=CC=CC=C4C3=C(C(=C2)OC)OC",
-        "nornuciferine": "CNC1CCC2=C3C1CC4=CC=CC=C4C3=C(C(=C2)OC)OC",
-        "pronuciferine": "CN1CCC23C4=C(C=CC2=O)C(=C(C=C4)OC)OC1C3",
         "roemerine": "CN1CCC2=C3C1CC4=CC=CC=C4C3=C5C2OCO5",
-        "liriodenine": "O=C1C2=CC=CC=C2C3=C4C1=CC=C5C4=C(OCO5)C=N3",
-        "anonaine": "C1C2C3=C(C4=C1C=CC(=C4)O2)C5=CC=CC=C5N3",
-        "armepavine": "CN1CCC2=CC(=C(C=C2C1CC3=CC=C(C=C3)OC)OC)O",
-        "methylcorypalline": "CN1CCC2=CC(=C(C=C2C1)OC)OC",
-        "quercetin": "C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O)O",
         "donepezil": "COc1ccc2c(c1)C(=O)C(CC3CCN(Cc4ccccc4)CC3)C2",
         "verubecestat": "CS(=O)(=O)N1CCN(CC1)c2ccc(c3csc(N)n3)cc2F"
     }
 
     REF_DRUGS_INFO = {
-        "Donepezil (Chuẩn AChE)": {
-            "smiles": OFFLINE_DATABASE["donepezil"],
-            "g_ache": -11.5,
-            "g_bace1": -7.2
-        },
-        "Verubecestat (Chuẩn BACE1)": {
-            "smiles": OFFLINE_DATABASE["verubecestat"],
-            "g_ache": -6.8,
-            "g_bace1": -10.4
-        }
+        "Donepezil (Chuẩn AChE)": {"smiles": OFFLINE_DATABASE["donepezil"], "g_ache": -11.5, "g_bace1": -7.2},
+        "Verubecestat (Chuẩn BACE1)": {"smiles": OFFLINE_DATABASE["verubecestat"], "g_ache": -6.8, "g_bace1": -10.4}
     }
 
-    # 2. Hàm tính Tanimoto an toàn tuyệt đối (Khắc phục hoàn toàn Boost.Python.ArgumentError)
+    # 2. Hàm xử lý an toàn
     def safe_tanimoto(fp1, fp2, fallback=0.0):
         if fp1 is None or fp2 is None:
             return fallback
@@ -526,47 +511,18 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         except Exception:
             return fallback
 
-    def resolve_molecule(smiles_input, name_input):
-        if not RDKIT_AVAILABLE:
-            return None, "RDKit chưa sẵn sàng"
-        
-        clean_name = name_input.strip().lower()
-        clean_smiles = smiles_input.strip() if smiles_input else ""
-
-        # Tầng 1: SMILES/InChI người dùng nhập
-        if clean_smiles:
-            try:
-                m = Chem.MolFromInChI(clean_smiles) if clean_smiles.startswith("InChI=") else Chem.MolFromSmiles(clean_smiles)
-                if m is not None:
-                    return m, "Mã SMILES/InChI người dùng nhập"
-            except Exception:
-                pass
-
-        # Tầng 2: Tra cứu Offline Database
-        if clean_name in OFFLINE_DATABASE:
-            try:
-                m = Chem.MolFromSmiles(OFFLINE_DATABASE[clean_name])
-                if m is not None:
-                    return m, f"Thư viện nội bộ hệ thống ({name_input.strip()})"
-            except Exception:
-                pass
-
-        # Tầng 3: PubChem API
-        if clean_name:
-            try:
-                encoded = urllib.parse.quote(clean_name)
-                url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded}/property/CanonicalSMILES/JSON"
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=3) as resp:
-                    data = json.loads(resp.read().decode('utf-8'))
-                    s_api = data['PropertyTable']['Properties'][0]['CanonicalSMILES']
-                    m = Chem.MolFromSmiles(s_api)
-                    if m is not None:
-                        return m, f"PubChem API (Tên: '{clean_name}')"
-            except Exception:
-                pass
-
-        return None, None
+    def process_smiles_to_mol(smiles_str):
+        if not RDKIT_AVAILABLE or not smiles_str or not isinstance(smiles_str, str):
+            return None
+        clean_s = smiles_str.strip()
+        if not clean_s:
+            return None
+        try:
+            if clean_s.startswith("InChI="):
+                return Chem.MolFromInChI(clean_s)
+            return Chem.MolFromSmiles(clean_s)
+        except Exception:
+            return None
 
     def calculate_cheminformatics_properties(mol):
         if mol is None or not RDKIT_AVAILABLE:
@@ -579,68 +535,64 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                 "LogP": round(float(Descriptors.MolLogP(mol)), 2),
                 "TPSA": round(float(Descriptors.TPSA(mol)), 2),
                 "HBD": int(rdMolDescriptors.CalcNumLipinskiHDonors(mol)),
-                "HBA": int(rdMolDescriptors.CalcNumLipinskiHAcceptors(mol)),
-                "RotB": int(rdMolDescriptors.CalcNumRotatableBonds(mol))
+                "HBA": int(rdMolDescriptors.CalcNumLipinskiHAcceptors(mol))
             }
             return fp, props
         except Exception:
             return None, None
 
-    # Khởi tạo dữ liệu tham chiếu 2 thuốc chuẩn
+    # Khởi tạo Vân tay phân tử 2 thuốc gốc
     ref_data = {}
     if RDKIT_AVAILABLE:
         for ref_name, rdata in REF_DRUGS_INFO.items():
-            m_ref, _ = resolve_molecule(rdata["smiles"], ref_name)
+            m_ref = process_smiles_to_mol(rdata["smiles"])
             fp_ref, props_ref = calculate_cheminformatics_properties(m_ref)
-            ref_data[ref_name] = {
-                "fp": fp_ref,
-                "props": props_ref,
-                "g_ache": rdata["g_ache"],
-                "g_bace1": rdata["g_bace1"]
-            }
+            ref_data[ref_name] = {"fp": fp_ref, "props": props_ref, "g_ache": rdata["g_ache"], "g_bace1": rdata["g_bace1"]}
 
-    # 3. Giao diện Cấu hình Nhập liệu
-    st.subheader("⚙️ Cấu hình Hợp chất Thử nghiệm")
+    # 3. Giao diện Nhập dữ liệu
+    st.subheader("⚙️ Nhập thông số Hợp chất Thử nghiệm")
     
+    if not RDKIT_AVAILABLE:
+        st.error("⚠️ Thư viện RDKit chưa được cài đặt trên Server. Vui lòng thêm `rdkit` vào file `requirements.txt`.")
+
     input_mode = st.radio(
-        "Lựa chọn phương thức tính toán:",
+        "Lựa chọn phương thức nhập:",
         [
-            "Tự động tính từ Cấu trúc phân tử (RDKit / Offline DB / API)",
-            "Tải file CSV danh sách",
-            "Nhập thủ công thông số (Dự phòng khi lỗi mạng hoặc không có SMILES)"
+            "Nhập thủ công SMILES & Năng lượng Docking",
+            "Tải file CSV danh sách hợp chất"
         ]
     )
 
     compounds_to_analyze = []
 
-    if input_mode == "Tự động tính từ Cấu trúc phân tử (RDKit / Offline DB / API)":
-        num_comp = st.number_input("Số lượng hợp chất:", min_value=1, max_value=5, value=1, step=1)
+    if input_mode == "Nhập thủ công SMILES & Năng lượng Docking":
+        num_comp = st.number_input("Số lượng hợp chất cần phân tích:", min_value=1, max_value=10, value=1, step=1)
         for i in range(int(num_comp)):
             st.markdown(f"**Hợp chất #{i+1}**")
             col_n, col_s = st.columns([1, 2])
-            c_name = col_n.text_input(f"Tên hợp chất #{i+1}:", "Roemerine" if i==0 else f"Compound_{i+1}", key=f"auto_name_{i}")
-            c_smiles = col_s.text_input(f"Mã SMILES (Để trống nếu dùng tên phổ biến):", "", key=f"auto_smiles_{i}")
+            c_name = col_n.text_input(f"Tên hợp chất #{i+1}:", value="Roemerine" if i==0 else f"Compound_{i+1}", key=f"m_name_{i}")
             
+            default_smiles = OFFLINE_DATABASE["roemerine"] if i==0 else ""
+            c_smiles = col_s.text_input(f"Mã SMILES hợp chất #{i+1}:", value=default_smiles, key=f"m_smiles_{i}")
+
             col_g1, col_g2 = st.columns(2)
-            g_ache = col_g1.number_input(f"ΔG AChE (kcal/mol) #{i+1}:", value=-8.80, key=f"auto_g_ache_{i}")
-            g_bace1 = col_g2.number_input(f"ΔG BACE1 (kcal/mol) #{i+1}:", value=-8.10, key=f"auto_g_bace1_{i}")
+            g_ache = col_g1.number_input(f"ΔG AChE (kcal/mol) #{i+1}:", value=-8.80, key=f"m_g_ache_{i}")
+            g_bace1 = col_g2.number_input(f"ΔG BACE1 (kcal/mol) #{i+1}:", value=-8.10, key=f"m_g_bace1_{i}")
 
             compounds_to_analyze.append({
-                "mode": "auto",
                 "name": c_name,
                 "smiles": c_smiles,
                 "g_ache": g_ache,
                 "g_bace1": g_bace1
             })
 
-    elif input_mode == "Tải file CSV danh sách":
+    else:
         uploaded_file = st.file_uploader("Tải file CSV hợp chất:", type=["csv"])
         if uploaded_file is not None:
             try:
                 df_up = pd.read_csv(uploaded_file)
                 for _, row in df_up.iterrows():
                     compounds_to_analyze.append({
-                        "mode": "auto",
                         "name": str(row.get("Name", "Compound")),
                         "smiles": str(row.get("SMILES", "")),
                         "g_ache": float(row.get("g_ache", -8.0)),
@@ -648,54 +600,23 @@ elif page == "4. Phân tích cấu trúc (Toán)":
                     })
             except Exception as e:
                 st.error(f"Lỗi đọc file CSV: {str(e)}")
-        else:
-            st.info("Cột yêu cầu trong file CSV: `Name`, `SMILES` (không bắt buộc), `g_ache`, `g_bace1`")
 
-    else:
-        st.info("💡 Chế độ này dành cho trường hợp bạn đã có sẵn các chỉ số thực nghiệm hoặc hệ thống bị ngắt kết nối mạng.")
-        num_comp = st.number_input("Số lượng hợp chất nhập thủ công:", min_value=1, max_value=5, value=1, step=1)
-        for i in range(int(num_comp)):
-            st.markdown(f"**Hợp chất #{i+1}**")
-            col_n, col_d, col_v = st.columns([1.5, 1, 1])
-            c_name = col_n.text_input(f"Tên hợp chất #{i+1}:", "Roemerine" if i==0 else f"Compound_{i+1}", key=f"m_name_{i}")
-            sim_don = col_d.number_input(f"Tanimoto vs Donepezil (0 - 1):", min_value=0.0, max_value=1.0, value=0.350, step=0.001, key=f"m_simd_{i}")
-            sim_ver = col_v.number_input(f"Tanimoto vs Verubecestat (0 - 1):", min_value=0.0, max_value=1.0, value=0.280, step=0.001, key=f"m_simv_{i}")
-
-            col_ga, col_gb, col_mw, col_logp, col_tpsa = st.columns(5)
-            g_ache = col_ga.number_input(f"ΔG AChE:", value=-8.80, key=f"m_ga_{i}")
-            g_bace1 = col_gb.number_input(f"ΔG BACE1:", value=-8.10, key=f"m_gb_{i}")
-            mw = col_mw.number_input(f"MW (g/mol):", value=279.33, key=f"m_mw_{i}")
-            logp = col_logp.number_input(f"LogP:", value=3.21, key=f"m_lp_{i}")
-            tpsa = col_tpsa.number_input(f"TPSA (Å²):", value=27.69, key=f"m_tp_{i}")
-
-            compounds_to_analyze.append({
-                "mode": "manual",
-                "name": c_name,
-                "sim_don": sim_don,
-                "sim_ver": sim_ver,
-                "g_ache": g_ache,
-                "g_bace1": g_bace1,
-                "mw": mw,
-                "logp": logp,
-                "tpsa": tpsa
-            })
-
-    # 4. Xử lý dữ liệu & Tính toán kết quả
+    # 4. Tính toán Tanimoto & Thông số Hóa lý
     results_list = []
     plot_data = []
 
-    # Lấy fingerprint an toàn
     fp_don = ref_data.get("Donepezil (Chuẩn AChE)", {}).get("fp")
     fp_ver = ref_data.get("Verubecestat (Chuẩn BACE1)", {}).get("fp")
     don_ver_sim = safe_tanimoto(fp_don, fp_ver, fallback=0.280)
 
+    # Đưa thuốc gốc vào đồ thị
     plot_data.append({
         "Hợp chất": "⭐ Donepezil (Chuẩn AChE)",
         "Tanimoto vs Donepezil": 1.0,
         "Tanimoto vs Verubecestat": don_ver_sim,
         "ΔG AChE (kcal/mol)": REF_DRUGS_INFO["Donepezil (Chuẩn AChE)"]["g_ache"],
         "ΔG BACE1 (kcal/mol)": REF_DRUGS_INFO["Donepezil (Chuẩn AChE)"]["g_bace1"],
-        "Loại": "Thuốc chuẩn AChE"
+        "Loại": "Thuốc gốc AChE"
     })
     plot_data.append({
         "Hợp chất": "⭐ Verubecestat (Chuẩn BACE1)",
@@ -703,95 +624,62 @@ elif page == "4. Phân tích cấu trúc (Toán)":
         "Tanimoto vs Verubecestat": 1.0,
         "ΔG AChE (kcal/mol)": REF_DRUGS_INFO["Verubecestat (Chuẩn BACE1)"]["g_ache"],
         "ΔG BACE1 (kcal/mol)": REF_DRUGS_INFO["Verubecestat (Chuẩn BACE1)"]["g_bace1"],
-        "Loại": "Thuốc chuẩn BACE1"
+        "Loại": "Thuốc gốc BACE1"
     })
 
     failed_compounds = []
 
     for item in compounds_to_analyze:
-        if item["mode"] == "auto":
-            if not RDKIT_AVAILABLE:
-                st.error("RDKit chưa sẵn sàng.")
-                break
-            
-            mol, source_desc = resolve_molecule(item["smiles"], item["name"])
-            if mol is None:
-                failed_compounds.append(item["name"])
-                continue
-            
-            fp, props = calculate_cheminformatics_properties(mol)
-            if fp is None:
-                failed_compounds.append(item["name"])
-                continue
+        mol = process_smiles_to_mol(item["smiles"])
+        
+        if mol is None:
+            failed_compounds.append(item["name"])
+            continue
 
-            # Tính toán Tanimoto với hàm bọc safe_tanimoto
-            sim_don = safe_tanimoto(fp, fp_don, fallback=0.0)
-            sim_ver = safe_tanimoto(fp, fp_ver, fallback=0.0)
+        fp, props = calculate_cheminformatics_properties(mol)
+        if fp is None:
+            failed_compounds.append(item["name"])
+            continue
 
-            res = {
-                "Hợp chất": item["name"],
-                "Nguồn dữ liệu": source_desc,
-                "Tanimoto vs Donepezil": sim_don,
-                "Tanimoto vs Verubecestat": sim_ver,
-                "ΔG AChE (kcal/mol)": item["g_ache"],
-                "ΔG BACE1 (kcal/mol)": item["g_bace1"],
-                "MW (g/mol)": props["MW"],
-                "LogP": props["LogP"],
-                "TPSA (Å²)": props["TPSA"],
-                "HBD": props["HBD"],
-                "HBA": props["HBA"],
-                "RotB": props["RotB"]
-            }
-            results_list.append(res)
-            
-            plot_data.append({
-                "Hợp chất": item["name"],
-                "Tanimoto vs Donepezil": sim_don,
-                "Tanimoto vs Verubecestat": sim_ver,
-                "ΔG AChE (kcal/mol)": item["g_ache"],
-                "ΔG BACE1 (kcal/mol)": item["g_bace1"],
-                "Loại": "Hợp chất thử nghiệm"
-            })
+        # Áp cấu trúc tự động tính Tanimoto
+        sim_don = safe_tanimoto(fp, fp_don)
+        sim_ver = safe_tanimoto(fp, fp_ver)
 
-        else:
-            # Nhập thủ công
-            res = {
-                "Hợp chất": item["name"],
-                "Nguồn dữ liệu": "Người dùng nhập thủ công",
-                "Tanimoto vs Donepezil": item["sim_don"],
-                "Tanimoto vs Verubecestat": item["sim_ver"],
-                "ΔG AChE (kcal/mol)": item["g_ache"],
-                "ΔG BACE1 (kcal/mol)": item["g_bace1"],
-                "MW (g/mol)": item["mw"],
-                "LogP": item["logp"],
-                "TPSA (Å²)": item["tpsa"],
-                "HBD": "-",
-                "HBA": "-",
-                "RotB": "-"
-            }
-            results_list.append(res)
-            plot_data.append({
-                "Hợp chất": item["name"],
-                "Tanimoto vs Donepezil": item["sim_don"],
-                "Tanimoto vs Verubecestat": item["sim_ver"],
-                "ΔG AChE (kcal/mol)": item["g_ache"],
-                "ΔG BACE1 (kcal/mol)": item["g_bace1"],
-                "Loại": "Hợp chất thử nghiệm"
-            })
+        res = {
+            "Hợp chất": item["name"],
+            "Tanimoto vs Donepezil": sim_don,
+            "Tanimoto vs Verubecestat": sim_ver,
+            "ΔG AChE (kcal/mol)": item["g_ache"],
+            "ΔG BACE1 (kcal/mol)": item["g_bace1"],
+            "MW (g/mol)": props["MW"],
+            "LogP": props["LogP"],
+            "TPSA (Å²)": props["TPSA"],
+            "HBD": props["HBD"],
+            "HBA": props["HBA"]
+        }
+        results_list.append(res)
+        
+        plot_data.append({
+            "Hợp chất": item["name"],
+            "Tanimoto vs Donepezil": sim_don,
+            "Tanimoto vs Verubecestat": sim_ver,
+            "ΔG AChE (kcal/mol)": item["g_ache"],
+            "ΔG BACE1 (kcal/mol)": item["g_bace1"],
+            "Loại": "Hợp chất thử nghiệm"
+        })
 
+    # Cảnh báo nếu nhập sai SMILES
     if failed_compounds:
-        st.error(f"❌ Không thể phân tích cấu trúc cho các hợp chất: **{', '.join(failed_compounds)}**.")
-        st.warning("👉 Khắc phục: Vui lòng nhập mã SMILES trực tiếp, hoặc chuyển sang tùy chọn **'Nhập thủ công thông số'** để tự điền dữ liệu.")
+        st.warning(f"⚠️ Không thể phân tích cấu trúc cho hợp chất: **{', '.join(failed_compounds)}**. Vui lòng kiểm tra lại chuỗi SMILES.")
 
-    # 5. Báo cáo Kết quả & Đồ thị
+    # 5. Báo cáo & Trực quan hóa đồ thị
     if results_list:
         st.divider()
-        st.subheader("📊 Bảng Chỉ số Chi tiết (Tính toán thực nghiệm)")
-        
+        st.subheader("📊 Kết quả Phân tích Tương đồng Cấu trúc Tanimoto")
         df_res = pd.DataFrame(results_list)
         st.dataframe(df_res, use_container_width=True)
 
-        st.subheader("🎯 Đồ thị Mối tương quan Cấu trúc & Năng lượng Liên kết")
+        st.subheader("🎯 Đồ thị Tương quan Cấu trúc (Tanimoto) & Activity (ΔG)")
         df_plot = pd.DataFrame(plot_data)
         
         fig = px.scatter(
@@ -801,11 +689,13 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             color="Loại",
             text="Hợp chất",
             hover_data=["Tanimoto vs Verubecestat", "ΔG BACE1 (kcal/mol)"],
-            title="Tương quan Tanimoto (so với Donepezil) và Năng lượng Liên kết ΔG AChE"
+            title="Sơ đồ SAR: Độ tương đồng Tanimoto vs Năng lượng liên kết ΔG AChE"
         )
         fig.update_traces(textposition='top center', marker=dict(size=12))
         fig.update_yaxes(autorange="reversed")
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("💡 Hãy điền mã SMILES hợp lệ ở trên để hệ thống tự động tính toán chỉ số Tanimoto và xuất biểu đồ.")
 elif page == "5. Tối ưu Dung môi (Toán)":
     with st.sidebar:
         st.header("📖 Hướng dẫn Module 5")
