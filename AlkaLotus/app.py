@@ -632,7 +632,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             st.success("✅ Module 4 đã chạy thành công! Không sử dụng SMILES, thuật toán Tanimoto Liên tục được áp dụng chính xác bằng cách chuẩn hóa các vector thông số đầu vào.")
         except Exception as e:
             st.error(f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}. Vui lòng kiểm tra lại các thông số nhập vào.")
-elif page == "5. Tối ưu Dung môi (Toán)":
+elif page == "5. Tối ưu dung môi (Toán)":
     import numpy as np
     import pandas as pd
     import plotly.express as px
