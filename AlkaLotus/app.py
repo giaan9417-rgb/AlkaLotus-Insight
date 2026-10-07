@@ -86,7 +86,7 @@ if 'visited' not in st.session_state:
     st.session_state['visited'] = True
 
 
-st.title("🪷 AlkaLotus Insight")
+st.title("☘️🖥️PHYTOINSIGHT PLATFORM")
 st.markdown("<p style='font-size: 1.15em; color: #555; font-style: italic; margin-top: -15px; line-height: 1.4;'>Nền tảng tin sinh học tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer</p>", unsafe_allow_html=True)
 st.divider()
 
