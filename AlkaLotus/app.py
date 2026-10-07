@@ -466,13 +466,27 @@ nghiên cứu Alzheimer từ thảo dược tự nhiên.
                        file_name=f"AlkaLotus_Report_{selected_data['Name']}.txt", 
                        mime="text/plain")
 
-elif page == "4. Phân tích cấu trúc":
+elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên tục)"] or "4. Phân tích" in page:
     import pandas as pd
     import numpy as np
     import plotly.express as px
     import streamlit as st
 
     st.title("🧬 Module 4: Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên tục)")
+
+    # --- HƯỚNG DẪN MODULE 4 (ĐỒNG BỘ THEO MODULE 1) ---
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("### 📖 Hướng dẫn Module 4")
+        st.info("""
+        **Mục tiêu:** Đo lường và đánh giá độ tương đồng hóa lý - sinh học đa thông số giữa các hợp chất thử nghiệm với các thuốc đối chứng chuẩn (Donepezil & Verubecestat) bằng mô hình Tanimoto Liên tục (Continuous Tanimoto).
+
+        **Các bước thực hiện:**
+        1. **Nhập thông số:** Khai báo số lượng hợp chất và tùy chỉnh các chỉ số hóa lý (MW, LogP, TPSA, HBD, HBA) cùng năng lượng liên kết ($\Delta G$).
+        2. **So sánh Tanimoto:** Quan sát Bảng kết quả và Biểu đồ cột để xác định hợp chất có độ tương đồng cao nhất với thuốc đối chứng (tiệm cận 1.0).
+        3. **Đánh giá SAR & Heatmap:** Phân tích Ma trận Tương đồng Toàn diện và Biểu đồ Tương quan Đặc tính - Hoạt tính (SAR) để lựa chọn ứng viên tiềm năng nhất.
+        """)
+
     st.markdown("""
     **Cơ sở Khoa học Hóa tin học Cải tiến:**
     Nhằm tránh các lỗi nghiêm trọng khi giải mã chuỗi cấu trúc (SMILES), hệ thống áp dụng mô hình toán học **Tanimoto Liên tục (Continuous Tanimoto / Ruzicka Similarity)**.
@@ -641,6 +655,20 @@ elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
     
     try:
         st.title("🧪 Module 5: Tối ưu hóa Dung môi Đa Chất (Hansen Space)")
+
+        # --- HƯỚNG DẪN MODULE 5 (ĐỒNG BỘ THEO MODULE 1 & MODULE 4) ---
+        with st.sidebar:
+            st.markdown("---")
+            st.markdown("### 📖 Hướng dẫn Module 5")
+            st.info("""
+            **Mục tiêu:** Dự đoán độ hòa tan và tối ưu hóa hệ phối trộn đa dung môi cho bất kỳ hợp chất mục tiêu nào dựa trên mô hình Không gian Hansen (HSP - $\delta_D, \delta_P, \delta_H$).
+
+            **Các bước thực hiện:**
+            1. **Khai báo chất mục tiêu:** Chọn hợp chất từ danh sách chuẩn hoặc nhập trực tiếp bộ thông số HSP ($\delta_D, \delta_P, \delta_H$) và bán kính hòa tan $R_0$.
+            2. **Chọn & Phối trộn dung môi:** Lựa chọn các dung môi thành phần và kích hoạt AI/Monte Carlo để tìm tỷ lệ phối trộn tối ưu (hoặc tùy chỉnh bằng thanh trượt).
+            3. **Đánh giá RED & Không gian 3D:** Quan sát các chỉ số hiệu quả ($R_a$, RED, Score %), Biểu đồ Radar Cấu hình Hansen và Không gian Hansen 3D để xác định mức độ hòa tan tối ưu.
+            """)
+
         st.markdown("""
         Hệ thống phân tích và dự đoán độ hòa tan dựa trên **Khoảng cách Hansen (Hansen Solubility Parameters - HSP)**. 
         Module này cho phép tối ưu hóa hệ dung môi cho **bất kỳ hợp chất mục tiêu nào** thông qua việc phối trộn đa dung môi để đạt được khoảng cách hòa tan ($R_a$) ngắn nhất.
@@ -844,6 +872,20 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
 
     try:
         st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
+
+        # --- HƯỚNG DẪN MODULE 6 (ĐỒNG BỘ THEO CÁC MODULE TRƯỚC) ---
+        with st.sidebar:
+            st.markdown("---")
+            st.markdown("### 📖 Hướng dẫn Module 6")
+            st.info("""
+            **Mục tiêu:** Mô phỏng diễn biến nồng độ và vận tốc chiết tách theo thời gian dựa trên mô hình Động học giả bậc hai (PSO - Pseudo-Second-Order) để tìm điểm dừng kỹ thuật (Cut-off point) tối ưu chi phí và năng lượng.
+
+            **Các bước thực hiện:**
+            1. **Thiết lập Cấu hình:** Nhập tên hợp chất mục tiêu, thời gian khảo sát tổng thể, cùng hai thông số thực nghiệm: dung lượng bão hòa $q_e$ và hằng số tốc độ $k_2$.
+            2. **Theo dõi Báo cáo & Đồ thị:** Quan sát các mốc thời gian quan trọng ($t_{50}, t_{80}, t_{90}$) và đồ thị kép kết hợp giữa nồng độ $q_t$ với vận tốc chiết tức thời $V_t$.
+            3. **Phân tích Tối ưu Năng lượng:** Đánh giá điểm dừng kỹ thuật khuyến nghị (Cut-off point) để tránh lãng phí năng lượng ở giai đoạn bão hòa và xuất bảng dữ liệu chi tiết.
+            """)
+
         st.markdown("""
         Hệ thống phân tích quá trình chiết tách đa chất dựa trên mô hình **Động học giả bậc hai (Pseudo-second-order - PSO)**. 
         Mô hình này giả định bước quyết định tốc độ chiết tách là quá trình khuếch tán / hấp phụ hóa học qua ranh giới pha.
@@ -985,6 +1027,20 @@ elif page in ["7. Dự toán Quy mô & Kinh tế", "7. Dự toán quy mô & kinh
 
     try:
         st.title("💰 Module 7: Dự toán Quy mô, Tối ưu hóa Kinh tế & Chi phí Sản xuất")
+
+        # --- HƯỚNG DẪN MODULE 7 (ĐỒNG BỘ THEO CÁC MODULE TRƯỚC) ---
+        with st.sidebar:
+            st.markdown("---")
+            st.markdown("### 📖 Hướng dẫn Module 7")
+            st.info("""
+            **Mục tiêu:** Tối ưu hóa chi phí sản xuất và quy mô vận hành bằng thuật toán Tối ưu hóa phi tuyến có ràng buộc (SLSQP), giúp tìm cấu hình khối lượng nguyên liệu ($m^*$) và thể tích dung môi ($v^*$) có tổng chi phí nhỏ nhất mà vẫn đảm bảo sản lượng hoạt chất đầu ra tối thiểu ($Y_{\min}$).
+
+            **Các bước thực hiện:**
+            1. **Thiết lập Thông số Đầu vào:** Nhập đơn giá thị trường (nguyên liệu, dung môi, điện năng), thông số dược liệu, sản lượng mục tiêu $Y_{\min}$ và khoảng giới hạn quy mô thiết bị.
+            2. **Kích hoạt Tối ưu hóa:** Nhấn nút chạy thuật toán SLSQP để tìm điểm nghiệm tối ưu toàn cục ($m^*, v^*$) và bóc tách cấu thành chi phí.
+            3. **Phân tích Biểu đồ & Độ nhạy:** Quan sát biểu đồ tròn tỷ trọng chi phí, đường mức không gian nghiệm Contour Plot và báo cáo đánh giá độ nhạy biến động giá thị trường.
+            """)
+
         st.markdown("""
         Hệ thống tối ưu hóa chi phí sản xuất tự động dựa trên thuật toán **Tối ưu hóa phi tuyến có ràng buộc (SLSQP)**. 
         Mô hình tìm kiếm cấu hình vận hành $(m^*, v^*)$ tối ưu nhất sao cho **Tổng chi phí sản xuất $C(m,v)$ là nhỏ nhất** nhưng vẫn đảm bảo **đạt sản lượng hoạt chất đầu ra tối thiểu ($Y_{\min}$)**.
@@ -1134,7 +1190,7 @@ elif page in ["7. Dự toán Quy mô & Kinh tế", "7. Dự toán quy mô & kinh
                         req_m_line = target_yield_mg / (k_content * eta_decimal)
                         if scale_leaf[0] <= req_m_line <= scale_leaf[1]:
                             fig_contour.add_vline(x=req_m_line, line_dash="dash", line_color="red",
-                                                 annotation_text=f"Ràng buộc $Y_{{min}}$ ({req_m_line:.1f}kg)")
+                                                   annotation_text=f"Ràng buộc $Y_{{min}}$ ({req_m_line:.1f}kg)")
 
                         # Đánh dấu điểm tối ưu
                         fig_contour.add_trace(go.Scatter(
