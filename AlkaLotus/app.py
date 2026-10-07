@@ -975,88 +975,211 @@ elif page in ["6. Động học chiết tách (Toán)", "6. Động học Chiế
                 
     except Exception as e:
         st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc hiển thị: {e}")
-  # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC & PHÂN TÍCH CHI PHÍ) ---
-elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
-    with st.sidebar:
-        st.header("📖 Hướng dẫn Module 7")
-        st.info("""
-        **Mục tiêu:** Mô phỏng bài toán kinh tế và tối ưu hóa chi phí sản xuất hoạt chất Alkaloid dưới ràng buộc khắt khe về sản lượng thu hồi.
-        
-        **Điểm nổi bật:**
-        - Tích hợp dữ liệu từ Module 6 (Động học).
-        - Sử dụng thuật toán tối ưu hóa phi tuyến có ràng buộc (`SLSQP`).
+elif page in ["7. Dự toán Quy mô & Kinh tế (Toán)", "7. Dự toán quy mô & kinh tế (Toán)", "7. Dự toán Quy mô & Kinh tế & Tối ưu hóa (Toán)"] or "7. Dự toán" in page:
+    import numpy as np
+    import pandas as pd
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from scipy.optimize import minimize
+    import streamlit as st
+
+    try:
+        st.title("💰 Module 7: Dự toán Quy mô, Tối ưu hóa Kinh tế & Chi phí Sản xuất")
+        st.markdown("""
+        Hệ thống tối ưu hóa chi phí sản xuất tự động dựa trên thuật toán **Tối ưu hóa phi tuyến có ràng buộc (SLSQP)**. 
+        Mô hình tìm kiếm cấu hình vận hành $(m^*, v^*)$ tối ưu nhất sao cho **Tổng chi phí sản xuất $C(m,v)$ là nhỏ nhất** nhưng vẫn đảm bảo **đạt sản lượng hoạt chất đầu ra tối thiểu ($Y_{\min}$)**.
         """)
-        
-    st.title("7. Dự toán Quy mô & Kinh tế & Tối ưu hóa (Toán)")
-    st.markdown("Hệ thống tối ưu hóa chi phí sản xuất tự động dưới ràng buộc đảm bảo hàm lượng hoạt chất đầu ra.")
 
-    col_in1, col_in2 = st.columns(2)
-    with col_in1:
-        st.subheader("Thông số Đầu vào (Thị trường)")
-        price_leaf = st.number_input("Giá lá sen khô (VNĐ/kg)", value=50000, step=5000)
-        price_solvent = st.number_input("Giá dung môi tối ưu (VNĐ/Lít)", value=35000, step=2000)
-        price_elec = st.number_input("Giá điện (VNĐ/kWh)", value=2500, step=100)
-        target_yield_mg = st.number_input("Mức hoạt chất tối thiểu cần đạt (mg)", value=500.0, step=50.0)
+        # --- 1. MÔ HÌNH TOÁN HỌC & CÔNG THỨC KHÁI QUÁT ---
+        with st.expander("📖 Cơ sở Toán học & Bài toán Tối ưu hóa Kinh tế - Kỹ thuật", expanded=False):
+            st.markdown("**1. Hàm mục tiêu Cực tiểu hóa Tổng chi phí sản xuất $C(m,v)$:**")
+            st.latex(r"C(m,v) = (m \times P_{\text{raw}}) + (v \times P_{\text{solvent}}) + (0.15 \times v \times P_{\text{elec}})")
+            st.markdown("""
+            *Trong đó:*
+            * $m$: Khối lượng nguyên liệu dược liệu khô (kg)
+            * $P_{\text{raw}}$: Đơn giá nguyên liệu đầu vào (VNĐ/kg)
+            * $v$: Thể tích dung môi chiết xuất (Lít)
+            * $P_{\text{solvent}}$: Đơn giá dung môi chiết (VNĐ/Lít)
+            * $0.15 \times v$: Định mức tiêu thụ điện năng (kWh) tương quan tuyến tính với thể tích gia nhiệt/khuấy trộn
+            * $P_{\text{elec}}$: Đơn giá điện năng (VNĐ/kWh)
+            """)
 
-    with col_in2:
-        st.subheader("Thông số Giới hạn Vận hành")
-        
-        scale_leaf = st.slider("Khoảng quy mô mẻ chiết (kg lá)", 1, 50, (1, 50))
-        st.caption("📌 **Quy mô mẻ:** Giới hạn khối lượng nguyên liệu lá sen khô đầu vào cho một lần chiết xuất.")
-        
-        vol_solvent = st.slider("Khoảng thể tích dung môi (Lít)", 10, 200, (10, 200))
-        st.caption("📌 **Thể tích dung môi:** Khoảng giới hạn lượng dung môi cấp vào bình chiết.")
-        
-        recovery_eff = st.slider("Hiệu suất thu hồi trung bình (%)", 0.5, 2.0, 1.2, step=0.1)
-        st.caption("📌 **Hiệu suất thu hồi:** Tỷ lệ chuyển hóa hoạt chất kế thừa từ mô hình động học Module 6.")
+            st.markdown("**2. Hệ thống Ràng buộc Kỹ thuật & Sản lượng đầu ra ($Y_{\min}$):**")
+            st.latex(r"Y(m,v) = m \times k \times \eta(v,t) \ge Y_{\min}")
+            st.markdown("""
+            *Trong đó:*
+            * $k$: Hàm lượng hoạt chất cơ sở có trong nguyên liệu khô (mg/kg)
+            * $\eta(v,t)$: Tỷ lệ / Hiệu suất thu hồi hoạt chất từ quá trình chiết (%)
+            * $Y_{\min}$: Mức sản lượng hoạt chất mục tiêu tối thiểu cần thu được (mg)
+            """)
 
-    st.divider()
-    st.subheader("⚙️ Tối ưu hóa phi tuyến có ràng buộc (SciPy - SLSQP)")
-    
-    if st.button("🚀 Chạy thuật toán tối ưu hóa kinh tế & ràng buộc"):
-        # Hàm mục tiêu cần cực tiểu hóa (Chi phí)
-        def objective(x):
-            m, v = x
-            elec_kwh = v * 0.15 
-            return (m * price_leaf) + (v * price_solvent) + (elec_kwh * price_elec)
+            st.markdown("**3. Giới hạn biên thiết bị vận hành:**")
+            st.latex(r"m_{\min} \le m \le m_{\max}, \quad v_{\min} \le v \le v_{\max}")
 
-        # Ràng buộc bất đẳng thức: Y(m, v) >= target_yield_mg
-        # tương đương với: (m * recovery_eff * 15) - target_yield_mg >= 0
-        constraints = {
-            'type': 'ineq', 
-            'fun': lambda x: (x[0] * recovery_eff * 15) - target_yield_mg
-        }
+        st.markdown("---")
 
-        bounds = [scale_leaf, vol_solvent]
-        x0 = [(scale_leaf[0] + scale_leaf[1]) / 2, (vol_solvent[0] + vol_solvent[1]) / 2]
-        
-        # Sử dụng phương pháp SLSQP để giải quyết bài toán tối ưu có ràng buộc
-        res = minimize(objective, x0=x0, method='SLSQP', bounds=bounds, constraints=constraints)
-        
-        if res.success:
-            opt_m, opt_v = res.x
-            opt_cost = res.fun
-            est_output_mg = opt_m * recovery_eff * 15 
-            
-            # Tính toán chi tiết cấu thành chi phí để báo cáo chuyên sâu
-            cost_leaf_val = opt_m * price_leaf
-            cost_solvent_val = opt_v * price_solvent
-            cost_elec_val = (opt_v * 0.15) * price_elec
-            
-            st.success("🎉 Tối ưu hóa thành công dưới ràng buộc sản lượng!")
-            
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Khối lượng lá tối ưu", f"{opt_m:.2f} kg")
-            m2.metric("Thể tích dung môi tối ưu", f"{opt_v:.2f} Lít")
-            m3.metric("Tổng chi phí tối thiểu", f"{opt_cost:,.0f} VNĐ")
-            
-            # Hiển thị thêm bảng bóc tách chi phí chuyên nghiệp
-            with st.expander("📊 Xem chi tiết cấu thành chi phí kinh tế-kỹ thuật"):
-                col_c1, col_c2, col_c3 = st.columns(3)
-                col_c1.metric("Chi phí Nguyên liệu lá", f"{cost_leaf_val:,.0f} VNĐ", f"{(cost_leaf_val/opt_cost)*100:.1f}%")
-                col_c2.metric("Chi phí Dung môi", f"{cost_solvent_val:,.0f} VNĐ", f"{(cost_solvent_val/opt_cost)*100:.1f}%")
-                col_c3.metric("Chi phí Điện năng", f"{cost_elec_val:,.0f} VNĐ", f"{(cost_elec_val/opt_cost)*100:.1f}%")
-            
-            st.info(f"💡 **Khuyến nghị vận hành chuẩn hóa:** Để đảm bảo đạt sản lượng yêu cầu tối thiểu **{target_yield_mg:.1f} mg** (thực tế thu được **{est_output_mg:.1f} mg**) với chi phí thấp nhất, hệ thống tự động đề xuất cấu hình: **{opt_m:.1f} kg** lá sen khô và **{opt_v:.1f} lít** dung môi.")
-        else:
-            st.warning("⚠️ Không tìm thấy nghiệm thỏa mãn (Miền khả thi rỗng). Có thể mức sản lượng yêu cầu quá cao so với giới hạn quy mô lá hoặc hiệu suất hiện tại. Vui lòng nới lỏng ràng buộc hoặc tăng quy mô mẻ chiết.")
+        # --- 2. GIAO DIỆN NHẬP THÔNG SỐ (ĐA CHẤT & THỊ TRƯỜNG) ---
+        st.subheader("⚙️ 1. Thiết lập Thông số Đầu vào & Thị trường")
+
+        col_in1, col_in2, col_in3 = st.columns(3)
+        with col_in1:
+            st.markdown("**🏷️ Đơn giá Thị trường**")
+            price_raw = st.number_input("Giá nguyên liệu khô (VNĐ/kg):", value=50000, step=5000, format="%d")
+            price_solvent = st.number_input("Giá dung môi chiết (VNĐ/Lít):", value=35000, step=2000, format="%d")
+            price_elec = st.number_input("Giá điện sản xuất (VNĐ/kWh):", value=2500, step=100, format="%d")
+
+        with col_in2:
+            st.markdown("**🔬 Thông số Dược liệu & Mục tiêu**")
+            target_compound = st.text_input("Tên hoạt chất mục tiêu:", value="Nuciferine")
+            raw_material_name = st.text_input("Tên nguyên liệu khô:", value="Lá sen khô")
+            k_content = st.number_input(f"Hàm lượng {target_compound} trong nguyên liệu (mg/kg):", value=150.0, step=10.0, format="%.1f")
+            target_yield_mg = st.number_input("Sản lượng hoạt chất mục tiêu $Y_{min}$ (mg):", value=500.0, step=50.0, format="%.1f")
+
+        with col_in3:
+            st.markdown("**🎛️ Giới hạn Quy mô Thiết bị**")
+            scale_leaf = st.slider("Khoảng khối lượng mẻ chiết $m$ (kg):", 1, 100, (1, 50))
+            vol_solvent = st.slider("Khoảng thể tích dung môi $v$ (Lít):", 10, 500, (10, 200))
+            recovery_eff_pct = st.slider("Hiệu suất thu hồi chiết xuất $\eta$ (%):", 10.0, 100.0, 80.0, step=1.0)
+
+        st.divider()
+
+        # --- 3. THUẬT TOÁN TỐI ƯU HÓA PHI TUYẾN (SLSQP) ---
+        st.subheader("🚀 2. Chạy Mô hình Tối ưu hóa Chi phí (SciPy - SLSQP)")
+
+        if st.button("🔥 Kích hoạt Thuật toán Tối ưu hóa Kinh tế - Kỹ thuật", type="primary"):
+            eta_decimal = recovery_eff_pct / 100.0  # Chuyển phần trăm về hệ số [0, 1]
+
+            # Kiểm tra xem sản lượng mục tiêu có khả thi với quy mô tối đa không
+            max_possible_yield = scale_leaf[1] * k_content * eta_decimal
+            if max_possible_yield < target_yield_mg:
+                st.error(f"⚠️ **Không thể tối ưu hóa (Miền khả thi rỗng):** Ở quy mô nguyên liệu tối đa ({scale_leaf[1]} kg), sản lượng thu hồi tối đa chỉ đạt **{max_possible_yield:.1f} mg**, nhỏ hơn mục tiêu **{target_yield_mg:.1f} mg**. Vui lòng tăng giới hạn $m_{max}$ hoặc giảm $Y_{min}$.")
+            else:
+                # 1. Định nghĩa Hàm mục tiêu chi phí C(m, v)
+                def objective(x):
+                    m, v = x
+                    elec_kwh = v * 0.15
+                    return (m * price_raw) + (v * price_solvent) + (elec_kwh * price_elec)
+
+                # 2. Định nghĩa Ràng buộc bất đẳng thức: m * k * eta - Y_min >= 0
+                constraints = {
+                    'type': 'ineq',
+                    'fun': lambda x: (x[0] * k_content * eta_decimal) - target_yield_mg
+                }
+
+                # 3. Giới hạn biến (Bounds)
+                bounds = [scale_leaf, vol_solvent]
+
+                # 4. Giá trị khởi tạo (Initial guess)
+                x0 = [(scale_leaf[0] + scale_leaf[1]) / 2.0, (vol_solvent[0] + vol_solvent[1]) / 2.0]
+
+                # 5. Giải bài toán với phương pháp SLSQP
+                res = minimize(objective, x0=x0, method='SLSQP', bounds=bounds, constraints=constraints)
+
+                if res.success:
+                    opt_m, opt_v = res.x
+                    opt_cost = res.fun
+                    est_output_mg = opt_m * k_content * eta_decimal
+
+                    cost_raw_val = opt_m * price_raw
+                    cost_solvent_val = opt_v * price_solvent
+                    cost_elec_val = (opt_v * 0.15) * price_elec
+                    unit_cost_vnd_per_mg = opt_cost / est_output_mg if est_output_mg > 0 else 0
+
+                    st.success("🎉 **Tối ưu hóa thành công!** Thuật toán SLSQP đã hội tụ về điểm nghiệm tối ưu toàn cục.")
+
+                    # --- DASHBOARD CHỈ SỐ KẾT QUẢ ---
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Khối lượng {0} ($m^*$)".format(raw_material_name), f"{opt_m:.2f} kg")
+                    m2.metric("Thể tích Dung môi ($v^*$)".format(""), f"{opt_v:.2f} Lít")
+                    m3.metric("Tổng Chi phí Tối thiểu", f"{opt_cost:,.0f} VNĐ")
+                    m4.metric(f"Chi phí Đơn vị ({target_compound})", f"{unit_cost_vnd_per_mg:,.1f} VNĐ/mg")
+
+                    # --- BÓC TÁCH CẤU THÀNH CHI PHÍ ---
+                    with st.expander("📊 Bóc tách chi tiết cấu thành chi phí kinh tế - kỹ thuật", expanded=True):
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("Chi phí Nguyên liệu", f"{cost_raw_val:,.0f} VNĐ", f"{(cost_raw_val/opt_cost)*100:.1f}% tổng")
+                        c2.metric("Chi phí Dung môi", f"{cost_solvent_val:,.0f} VNĐ", f"{(cost_solvent_val/opt_cost)*100:.1f}% tổng")
+                        c3.metric("Chi phí Điện năng", f"{cost_elec_val:,.0f} VNĐ", f"{(cost_elec_val/opt_cost)*100:.1f}% tổng")
+
+                    # --- 4. ĐỒ THỊ VÀ TRỰC QUAN HÓA CAO CẤP ---
+                    st.subheader("🌌 3. Biểu đồ Phân tích Cấu trúc Chi phí & Không gian Nghiệm Tối ưu")
+
+                    col_chart1, col_chart2 = st.columns([1, 1])
+
+                    with col_chart1:
+                        # Biểu đồ Tròn Donut bóc tách chi phí
+                        fig_pie = go.Figure(data=[go.Pie(
+                            labels=[f'Nguyên liệu ({raw_material_name})', 'Dung môi chiết', 'Điện năng gia nhiệt/khuấy'],
+                            values=[cost_raw_val, cost_solvent_val, cost_elec_val],
+                            hole=.4,
+                            marker_colors=['#2ecc71', '#3498db', '#e74c3c']
+                        )])
+                        fig_pie.update_layout(title_text="Cấu trúc Tỷ trọng Chi phí (%)", legend=dict(orientation="h", y=-0.1))
+                        st.plotly_chart(fig_pie, use_container_width=True)
+
+                    with col_chart2:
+                        # Biểu đồ Không gian nghiệm Contour Plot
+                        m_grid = np.linspace(scale_leaf[0], scale_leaf[1], 50)
+                        v_grid = np.linspace(vol_solvent[0], vol_solvent[1], 50)
+                        M, V = np.meshgrid(m_grid, v_grid)
+                        Z_cost = (M * price_raw) + (V * price_solvent) + (V * 0.15 * price_elec)
+
+                        fig_contour = go.Figure(data=go.Contour(
+                            z=Z_cost, x=m_grid, y=v_grid,
+                            colorscale='Viridis',
+                            colorbar=dict(title='Chi phí (VNĐ)')
+                        ))
+
+                        # Vẽ đường ràng buộc sản lượng Y_min
+                        req_m_line = target_yield_mg / (k_content * eta_decimal)
+                        if scale_leaf[0] <= req_m_line <= scale_leaf[1]:
+                            fig_contour.add_vline(x=req_m_line, line_dash="dash", line_color="red",
+                                                 annotation_text=f"Ràng buộc $Y_{{min}}$ ({req_m_line:.1f}kg)")
+
+                        # Đánh dấu điểm tối ưu
+                        fig_contour.add_trace(go.Scatter(
+                            x=[opt_m], y=[opt_v], mode='markers+text',
+                            marker=dict(color='red', size=14, symbol='star'),
+                            text=["ĐIỂM TỐI ƯU"], textposition="top center"
+                        ))
+
+                        fig_contour.update_layout(
+                            title_text="Đường mức Chi phí & Vùng khả thi trong không gian (m, v)",
+                            xaxis_title="Khối lượng Nguyên liệu m (kg)",
+                            yaxis_title="Thể tích Dung môi v (Lít)"
+                        )
+                        st.plotly_chart(fig_contour, use_container_width=True)
+
+                    # --- 5. PHÂN TÍCH CHUYÊN SÂU & ĐÁNH GIÁ ĐỘ NHẠY ---
+                    st.subheader("💡 4. Đánh giá Chiến lược & Phân tích Độ nhạy Kinh tế")
+
+                    # Phân tích độ nhạy (Sensitivity Analysis) khi biến động giá
+                    raw_plus_20 = ((opt_m * price_raw * 1.2) + cost_solvent_val + cost_elec_val - opt_cost) / opt_cost * 100
+                    solvent_plus_20 = (cost_raw_val + (cost_solvent_val * 1.2) + (cost_elec_val * 1.2) - opt_cost) / opt_cost * 100
+
+                    st.info(f"""
+                    **Báo cáo Đánh giá Tối ưu hóa Kinh tế cho {target_compound}:**
+                    * **Cấu hình Vận hành Khuyên dùng:** Để đạt sản lượng hoạt chất mục tiêu **{target_yield_mg:.1f} mg** (thực tế thu được **{est_output_mg:.1f} mg**), mẻ chiết cần sử dụng đúng **{opt_m:.2f} kg** {raw_material_name} và **{opt_v:.2f} Lít** dung môi.
+                    * **Bản chất Nghiệm Tối ưu:** Thuật toán tự động siết khối lượng nguyên liệu $m$ chạm đúng ngưỡng ràng buộc tối thiểu ($m^* = {opt_m:.2f}$ kg) và chọn thể tích dung môi $v$ ở mức thấp nhất trong khoảng cho phép ($v^* = {opt_v:.2f}$ Lít) để triệt tiêu chi phí điện năng và dung môi dư thừa.
+                    
+                    **📈 Báo cáo Phân tích Độ nhạy Thị trường (Sensitivity Analysis):**
+                    * Nếu **giá nguyên liệu ({raw_material_name})** tăng 20%: Tổng chi phí sản xuất sẽ tăng thêm **+{raw_plus_20:.2f}%**.
+                    * Nếu **giá dung môi** tăng 20%: Tổng chi phí sản xuất sẽ tăng thêm **+{solvent_plus_20:.2f}%**.
+                    $\\Rightarrow$ *Khuyến nghị:* Chi phí sản xuất nhạy cảm nhất với yếu tố **{"Nguyên liệu đầu vào" if cost_raw_val > cost_solvent_val else "Dung môi & Năng lượng gia nhiệt"}**. Do đó, chiến lược thu mua và hoàn lưu (tái sử dụng) dung môi sẽ là chìa khóa quyết định giá thành thương mại.
+                    """)
+
+                    # --- 6. XUẤT BẢNG DỮ LIỆU ---
+                    with st.expander("📋 Xem Bảng Tổng hợp Bóc tách Chi phí Chi tiết"):
+                        df_summary = pd.DataFrame({
+                            "Hạng mục Chi phí": [f"Nguyên liệu ({raw_material_name})", "Dung môi Chiết", "Điện năng Gia nhiệt/Khuấy", "TỔNG CỘNG"],
+                            "Số lượng / Định mức": [f"{opt_m:.2f} kg", f"{opt_v:.2f} Lít", f"{opt_v*0.15:.2f} kWh", "-"],
+                            "Đơn giá (VNĐ)": [f"{price_raw:,.0f} /kg", f"{price_solvent:,.0f} /Lít", f"{price_elec:,.0f} /kWh", "-"],
+                            "Thành tiền (VNĐ)": [f"{cost_raw_val:,.0f}", f"{cost_solvent_val:,.0f}", f"{cost_elec_val:,.0f}", f"{opt_cost:,.0f}"],
+                            "Tỷ trọng (%)": [f"{(cost_raw_val/opt_cost)*100:.1f}%", f"{(cost_solvent_val/opt_cost)*100:.1f}%", f"{(cost_elec_val/opt_cost)*100:.1f}%", "100.0%"]
+                        })
+                        st.dataframe(df_summary, use_container_width=True)
+                else:
+                    st.warning("⚠️ Thuật toán SLSQP không thể hội tụ. Vui lòng điều chỉnh lại khoảng giới hạn biến hoặc thay đổi giá trị khởi tạo.")
+
+    except Exception as e:
+        st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán tối ưu hóa: {e}")
