@@ -12,7 +12,7 @@ from scipy.optimize import minimize
 
 # --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
-    page_title="AlkaLotus Insight | Alzheimer Research",
+    page_title="PhytoInsight Platform | Nền tảng tin sinh học",
     layout="wide",
     page_icon="🪷",
     initial_sidebar_state="expanded"
@@ -76,7 +76,7 @@ if 'visited' not in st.session_state:
                 <div class="leaf" style="left: 15%; animation-delay: 0s;">🍃</div>
                 <div class="leaf" style="left: 80%; animation-delay: 1.5s;">🍃</div>
                 <div class="main-icons">🪷 🧬</div>
-                <div class="lotus-text">NỀN TẢNG TIN SINH HỌC TÍCH HỢP DỮ LIỆU VÀ MÔ PHỎNG ĐỘNG HỌC ALKALOTUS INSIGHT</div>
+                <div class="lotus-text">NỀN TẢNG TIN SINH HỌC PHYTOINSIGHT PLATFORM</div>
             </div>
             """, 
             unsafe_allow_html=True 
@@ -141,7 +141,7 @@ st.sidebar.markdown(
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 st.sidebar.divider()
 
-st.sidebar.title("🪷 AlkaLotus Insight")
+st.sidebar.title("☘️ PhytoInsight Platform.")
 st.sidebar.markdown("<div style='text-align: justify; font-size: 0.9em;'><b>Nền tảng tin sinh học</b>  tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer.</div>", unsafe_allow_html=True)
 
 st.sidebar.divider()
@@ -153,8 +153,8 @@ page = st.sidebar.radio(
         "3. Phân tích & Xuất báo cáo",
         "4. Phân tích cấu trúc",
         "5. Tối ưu dung môi",
-        "6. Động học chiết tách (Toán)",
-        "7. Dự toán quy mô & kinh tế (Toán)"
+        "6. Động học chiết tách",
+        "7. Dự toán quy mô & kinh tế"
     ]
 )
 st.sidebar.divider()
@@ -422,8 +422,8 @@ if page == "3. Phân tích & Xuất báo cáo":
              BÁO CÁO PHÂN TÍCH DƯỢC TÍNH PHÂN TỬ - ALKALOTUS PREDICTOR
 ======================================================================
 Dự án: Nghiên cứu In Silico dẫn xuất Alkaloid từ lá sen điều trị Alzheimer
-Tác giả: Quách Gia An - Nguyễn Lê Bách Hợp
-Đơn vị: Lớp 10-K30 - Trường THPT Chuyên Hùng Vương
+Tác giả: Quách Gia An 
+Đơn vị: Lớp 11-K30 - Trường THPT Chuyên Hùng Vương
 Thời gian trích xuất: {current_time}
 
 ----------------------------------------------------------------------
@@ -457,7 +457,7 @@ IV. DƯỢC ĐỘNG HỌC & ĐỘ AN TOÀN (ADMET)
 
 ======================================================================
 KẾT LUẬN: Hợp chất {selected_data['Name']} là ứng viên tiềm năng trong việc
-phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự nhiên.
+nghiên cứu Alzheimer từ thảo dược tự nhiên.
 ======================================================================
 """
     st.header("🔬 Xuất bản kết quả")
@@ -835,7 +835,7 @@ elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
                     st.plotly_chart(fig_3d, use_container_width=True)
     except Exception as e:
         st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc render: {e}")
-elif page in ["6. Động học chiết tách (Toán)", "6. Động học Chiết tách (Toán)"]:
+elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"]:
     import numpy as np
     import pandas as pd
     import plotly.graph_objects as go
@@ -975,7 +975,7 @@ elif page in ["6. Động học chiết tách (Toán)", "6. Động học Chiế
                 
     except Exception as e:
         st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc hiển thị: {e}")
-elif page in ["7. Dự toán Quy mô & Kinh tế (Toán)", "7. Dự toán quy mô & kinh tế (Toán)", "7. Dự toán Quy mô & Kinh tế & Tối ưu hóa (Toán)"] or "7. Dự toán" in page:
+elif page in ["7. Dự toán Quy mô & Kinh tế", "7. Dự toán quy mô & kinh tế", "7. Dự toán Quy mô & Kinh tế & Tối ưu hóa"] or "7. Dự toán" in page:
     import numpy as np
     import pandas as pd
     import plotly.graph_objects as go
