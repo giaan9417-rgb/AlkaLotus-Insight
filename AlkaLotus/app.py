@@ -835,63 +835,158 @@ elif page in ["5. Tối ưu dung môi (Toán)", "5. Tối ưu Dung môi (Toán)"
                     st.plotly_chart(fig_3d, use_container_width=True)
     except Exception as e:
         st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc render: {e}")
-elif page == "6. Động học Chiết tách (Toán)":
-    with st.sidebar:
-        st.header("📖 Hướng dẫn Module 6")
-        st.info("""
-        **Mục tiêu:** Mô phỏng quá trình chiết tách bằng mô hình toán học Pseudo-second-order.
-        
-        **Các bước thực hiện:**
-        1. **Thiết lập thông số:** Thay đổi Qe (dung lượng cực đại) và k2 (tốc độ chiết) từ bảng điều khiển bên trái.
-        2. **Quan sát biểu đồ:** Xem đường cong nồng độ tăng dần theo thời gian.
-        3. **Xác định t90:** Xem thời gian tối ưu để đạt 90% hiệu suất, giúp tiết kiệm thời gian và năng lượng vận hành.
+elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiết tách (Toán)"]:
+    import numpy as np
+    import pandas as pd
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    import streamlit as st
+
+    try:
+        st.title("📈 Module 6: Mô phỏng Động học & Vận tốc Chiết tách")
+        st.markdown("""
+        Hệ thống phân tích quá trình chiết tách đa chất dựa trên mô hình **Động học giả bậc hai (Pseudo-second-order - PSO)**. 
+        Mô hình này giả định rằng bước quyết định tốc độ chiết tách là quá trình hấp phụ hóa học / khuếch tán qua ranh giới pha.
         """)
-    st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
-    st.markdown("Sử dụng mô hình **Pseudo-second-order** để tối ưu hóa thời gian chiết xuất dược liệu.")
 
-    # 1. Cấu hình thông số thực nghiệm (Sidebar)
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("⚙️ Cài đặt thực nghiệm")
-    qe = st.sidebar.slider("Dung lượng tối đa (Qe - mg/g):", 5.0, 100.0, 25.0)
-    k2 = st.sidebar.slider("Hằng số vận tốc (k2 - g/mg.phút):", 0.001, 0.05, 0.015, step=0.001)
+        # --- 1. CƠ SỞ TOÁN HỌC ---
+        with st.expander("📖 Cơ sở Toán học & Phương trình Động học (PSO)", expanded=False):
+            st.markdown("**1. Phương trình vi phân giả bậc 2:**")
+            st.latex(r"\frac{dq_t}{dt} = k_2 (q_e - q_t)^2")
+            
+            st.markdown("**2. Dạng tích phân (Tính nồng độ theo thời gian):**")
+            st.latex(r"q_t = \frac{k_2 q_e^2 t}{1 + k_2 q_e t}")
+            
+            st.markdown("**3. Vận tốc chiết ban đầu ($h_0$ khi $t \rightarrow 0$):**")
+            st.latex(r"h_0 = k_2 q_e^2")
+            
+            st.markdown("**4. Công thức tính Thời gian đạt hiệu suất $x\%$ ($t_x$):**")
+            st.latex(r"t_x = \frac{x}{100 - x} \times \frac{1}{k_2 q_e}")
+            st.markdown("*Trong đó: $q_e$ là dung lượng cân bằng tối đa, $k_2$ là hằng số tốc độ.*")
 
-    # 2. Xử lý thuật toán
-    time_steps = np.linspace(0, 200, 100) # Giảm số bước để bảng hiện vừa đủ, không quá dài
-    qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
-    velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
+        st.markdown("---")
 
-    # 3. Dashboard hiển thị các thông số cốt lõi
-    col1, col2, col3 = st.columns(3)
-    t_90 = 9 / (k2 * qe)
-    col1.metric("Tốc độ ban đầu", f"{velocity[0]:.3f} mg/g.p")
-    col2.metric("Thời gian đạt 90% (t90)", f"{int(t_90)} phút")
-    col3.metric("Trạng thái", "Hiệu quả" if t_90 < 120 else "Chậm")
+        # --- 2. GIAO DIỆN NHẬP THÔNG SỐ (MỞ RỘNG ĐA CHẤT) ---
+        st.subheader("⚙️ 1. Thiết lập Cấu hình Thực nghiệm")
+        
+        col_input1, col_input2 = st.columns([1, 2])
+        with col_input1:
+            target_name = st.text_input("Tên Hợp chất Mục tiêu:", value="Chất X")
+            max_time = st.number_input("Thời gian khảo sát (phút):", min_value=10, max_value=1440, value=120, step=10)
+            
+        with col_input2:
+            st.markdown("**Nhập thông số động học từ thực nghiệm của bạn:**")
+            c1, c2 = st.columns(2)
+            qe = c1.number_input("Dung lượng bão hòa $q_e$ (mg/g):", min_value=0.1, value=25.0, step=0.5, format="%.2f")
+            k2 = c2.number_input("Hằng số tốc độ $k_2$ (g/mg.phút):", min_value=0.0001, value=0.0150, step=0.001, format="%.4f")
 
-    # 4. Đồ thị trực quan
-    fig = px.line(x=time_steps, y=qt, labels={'x': 'Thời gian (phút)', 'y': 'Nồng độ chiết (mg/g)'}, 
-                  title="Đường cong động học Pseudo-second-order")
-    fig.add_hline(y=qe, line_dash="dash", line_color="red", annotation_text="Giới hạn bão hòa (Qe)")
-    st.plotly_chart(fig, use_container_width=True)
+        # --- 3. XỬ LÝ TOÁN HỌC & THUẬT TOÁN ---
+        if qe <= 0 or k2 <= 0:
+            st.error("Lỗi: Các giá trị $q_e$ và $k_2$ phải lớn hơn 0.")
+        else:
+            # Sinh mảng thời gian mượt mà
+            time_steps = np.linspace(0, max_time, 200)
+            
+            # Tính toán nồng độ qt
+            qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
+            
+            # Tính toán vận tốc tức thời (đạo hàm bậc 1 của qt theo t)
+            velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
+            
+            # Tính các mốc thời gian quan trọng
+            h0 = k2 * (qe**2)
+            t_50 = 1 / (k2 * qe)
+            t_80 = 4 / (k2 * qe)
+            t_90 = 9 / (k2 * qe)
+            t_95 = 19 / (k2 * qe)
 
-    # 5. Phân tích chuyên sâu
-    st.subheader("💡 Phân tích chiến lược")
-    efficiency = qt / qe
-    time_to_80 = time_steps[np.searchsorted(efficiency, 0.8)]
-    
-    st.success(f"""
-    - **Giai đoạn tăng trưởng nhanh:** Từ 0 đến {int(time_to_80)} phút, quá trình chiết đạt hiệu suất cao nhất.
-    - **Thời điểm tối ưu:** Hệ thống khuyến nghị dừng quá trình tại **{int(t_90 + 10)} phút**. 
-    - **Giải thích khoa học:** Việc tiếp tục chiết sau thời điểm này tiêu tốn năng lượng vận hành máy khuấy nhưng chỉ làm tăng <5% nồng độ hoạt chất.
-    """)
+            # --- 4. DASHBOARD CHỈ SỐ ---
+            st.subheader(f"📊 2. Báo cáo Động học: {target_name}")
+            
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric(label="Vận tốc ban đầu ($h_0$)", value=f"{h0:.3f}", delta="mg/g.phút", delta_color="normal")
+            m2.metric(label="Thời gian 50% ($t_{50}$)", value=f"{t_50:.1f} ph", help="Thời gian đạt 1/2 sản lượng")
+            m3.metric(label="Thời gian 80% ($t_{80}$)", value=f"{t_80:.1f} ph", help="Ngưỡng bắt đầu bão hòa")
+            m4.metric(label="Thời gian 90% ($t_{90}$)", value=f"{t_90:.1f} ph", help="Ngưỡng kinh tế tối đa")
 
-    # 6. Bảng hiển thị dữ liệu (Đã định dạng sạch sẽ)
-    st.subheader("📋 Bảng dữ liệu mô phỏng chi tiết")
-    df_display = pd.DataFrame({
-        "Thời gian (phút)": time_steps, 
-        "Nồng độ (mg/g)": qt
-    })
-    # Hiển thị bảng với format số thập phân gọn gàng
-    st.dataframe(df_display.style.format({"Nồng độ (mg/g)": "{:.4f}"}), use_container_width=True)
+            # --- 5. BIỂU ĐỒ KÉP (TRỰC QUAN HÓA CAO CẤP) ---
+            st.subheader("🌌 3. Đồ thị Động học & Vận tốc Tức thời")
+            
+            # Tạo Figure với 2 trục Y
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            # Đường nồng độ qt (Trục Y1)
+            fig.add_trace(
+                go.Scatter(x=time_steps, y=qt, name=f"Nồng độ $q_t$ ({target_name})",
+                           mode='lines', line=dict(color='blue', width=3),
+                           fill='tozeroy', fillcolor='rgba(0, 0, 255, 0.1)'),
+                secondary_y=False,
+            )
+
+            # Đường vận tốc v_t (Trục Y2)
+            fig.add_trace(
+                go.Scatter(x=time_steps, y=velocity, name="Vận tốc chiết $V_t$",
+                           mode='lines', line=dict(color='red', width=2, dash='dot')),
+                secondary_y=True,
+            )
+
+            # Các đường gióng (Mốc thời gian)
+            critical_times = [(t_50, "50%"), (t_80, "80%"), (t_90, "90%")]
+            for t_val, label in critical_times:
+                if t_val <= max_time:
+                    q_val = (k2 * (qe ** 2) * t_val) / (1 + k2 * qe * t_val)
+                    fig.add_trace(go.Scatter(
+                        x=[t_val], y=[q_val], mode='markers+text',
+                        marker=dict(color='black', size=8, symbol='diamond'),
+                        text=[f"{label} ({t_val:.1f}p)"], textposition="top left", showlegend=False
+                    ), secondary_y=False)
+                    
+                    fig.add_vline(x=t_val, line_dash="dash", line_color="gray", opacity=0.5)
+
+            # Đường giới hạn bão hòa qe
+            fig.add_hline(y=qe, line_dash="solid", line_color="green", annotation_text=f"Max bão hòa ($q_e$ = {qe})", secondary_y=False)
+
+            fig.update_layout(
+                title_text="Động học Pseudo-Second-Order: Nồng độ vs. Vận tốc",
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            fig.update_xaxes(title_text="Thời gian (phút)")
+            fig.update_yaxes(title_text="Nồng độ chiết $q_t$ (mg/g)", secondary_y=False, color="blue")
+            fig.update_yaxes(title_text="Vận tốc $V_t$ (mg/g.phút)", secondary_y=True, color="red")
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # --- 6. PHÂN TÍCH CHIẾN LƯỢC SÂU ---
+            st.subheader("💡 4. Phân tích Chiến lược & Tối ưu Năng lượng")
+            
+            # Tính toán lượng thời gian lãng phí nếu chạy đến t95 so với t80
+            time_diff_80_95 = t_95 - t_80
+            yield_diff_80_95 = (0.95 * qe) - (0.80 * qe)
+            
+            st.info(f"""
+            **Báo cáo Đánh giá Tối ưu Quy trình cho {target_name}:**
+            * **Giai đoạn Đột phá (0 đến {t_50:.1f} phút):** Hệ thống đạt vận tốc chiết cực đại ($h_0 = {h0:.3f}$). Gradient nồng độ giữa dược liệu và dung môi rất lớn, giúp rút trích nhanh chóng 50% sản lượng.
+            * **Giai đoạn Cản trở không gian ({t_50:.1f} đến {t_80:.1f} phút):** Tốc độ giảm theo hàm mũ (đường nét đứt màu đỏ trên biểu đồ). Quá trình khuếch tán qua màng tế bào bắt đầu bị giới hạn.
+            * **Giai đoạn Bão hòa lãng phí (Sau {t_80:.1f} phút):** Biểu đồ thể hiện rõ vận tốc $V_t$ gần như tiệm cận 0. 
+            
+            **🔥 Khuyến nghị Kinh tế - Kỹ thuật:** 
+            Để tăng thêm chỉ **15%** hiệu suất (từ 80% lên 95%), hệ thống phải vận hành thêm **{time_diff_80_95:.1f} phút**. Điều này tiêu tốn năng lượng điện năng (gia nhiệt, máy khuấy, sóng siêu âm) hoàn toàn không tương xứng với lượng {target_name} thu được thêm ({yield_diff_80_95:.2f} mg/g). 
+            $\\Rightarrow$ **Điểm dừng kỹ thuật (Cut-off point) tối ưu nhất được đề xuất là: {t_80:.1f} phút đến {t_90:.1f} phút.**
+            """)
+
+            # --- 7. BẢNG DỮ LIỆU ---
+            with st.expander("📋 Xem và Tải bảng Dữ liệu Mô phỏng Chi tiết"):
+                df_display = pd.DataFrame({
+                    "Thời gian (phút)": np.round(time_steps, 2), 
+                    "Nồng độ qt (mg/g)": np.round(qt, 4),
+                    "Vận tốc Vt (mg/g.ph)": np.round(velocity, 5),
+                    "Hiệu suất (%)": np.round((qt / qe) * 100, 2)
+                })
+                st.dataframe(df_display, use_container_width=True)
+                
+    except Exception as e:
+        st.error(f"❌ Có lỗi toán học hoặc render xảy ra: {e}")
   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC & PHÂN TÍCH CHI PHÍ) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
