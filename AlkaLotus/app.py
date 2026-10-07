@@ -151,8 +151,8 @@ page = st.sidebar.radio(
         "1. Thư viện Alkaloid",
         "2. Mô phỏng Docking 3D",
         "3. Phân tích & Xuất báo cáo",
-        "4. Phân tích cấu trúc (Toán)",
-        "5. Tối ưu dung môi (Toán)",
+        "4. Phân tích cấu trúc",
+        "5. Tối ưu dung môi",
         "6. Động học chiết tách (Toán)",
         "7. Dự toán quy mô & kinh tế (Toán)"
     ]
@@ -466,7 +466,7 @@ phát triển các liệu pháp điều trị Alzheimer từ thảo dược tự
                        file_name=f"AlkaLotus_Report_{selected_data['Name']}.txt", 
                        mime="text/plain")
 
-elif page == "4. Phân tích cấu trúc (Toán)":
+elif page == "4. Phân tích cấu trúc":
     import pandas as pd
     import numpy as np
     import plotly.express as px
@@ -632,7 +632,7 @@ elif page == "4. Phân tích cấu trúc (Toán)":
             st.success("✅ Module 4 đã chạy thành công! Không sử dụng SMILES, thuật toán Tanimoto Liên tục được áp dụng chính xác bằng cách chuẩn hóa các vector thông số đầu vào.")
         except Exception as e:
             st.error(f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}. Vui lòng kiểm tra lại các thông số nhập vào.")
-elif page in ["5. Tối ưu dung môi (Toán)", "5. Tối ưu Dung môi (Toán)"]:
+elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
     import numpy as np
     import pandas as pd
     import plotly.express as px
@@ -835,7 +835,7 @@ elif page in ["5. Tối ưu dung môi (Toán)", "5. Tối ưu Dung môi (Toán)"
                     st.plotly_chart(fig_3d, use_container_width=True)
     except Exception as e:
         st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc render: {e}")
-elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiết tách (Toán)"]:
+elif page in ["6. Động học chiết tách (Toán)", "6. Động học Chiết tách (Toán)"]:
     import numpy as np
     import pandas as pd
     import plotly.graph_objects as go
@@ -843,10 +843,10 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
     import streamlit as st
 
     try:
-        st.title("📈 Module 6: Mô phỏng Động học & Vận tốc Chiết tách")
+        st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
         st.markdown("""
         Hệ thống phân tích quá trình chiết tách đa chất dựa trên mô hình **Động học giả bậc hai (Pseudo-second-order - PSO)**. 
-        Mô hình này giả định rằng bước quyết định tốc độ chiết tách là quá trình hấp phụ hóa học / khuếch tán qua ranh giới pha.
+        Mô hình này giả định bước quyết định tốc độ chiết tách là quá trình khuếch tán / hấp phụ hóa học qua ranh giới pha.
         """)
 
         # --- 1. CƠ SỞ TOÁN HỌC ---
@@ -862,7 +862,7 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
             
             st.markdown("**4. Công thức tính Thời gian đạt hiệu suất $x\%$ ($t_x$):**")
             st.latex(r"t_x = \frac{x}{100 - x} \times \frac{1}{k_2 q_e}")
-            st.markdown("*Trong đó: $q_e$ là dung lượng cân bằng tối đa, $k_2$ là hằng số tốc độ.*")
+            st.markdown("*Trong đó: $q_e$ là dung lượng cân bằng tối đa (mg/g), $k_2$ là hằng số tốc độ (g/mg.phút).*")
 
         st.markdown("---")
 
@@ -871,29 +871,23 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
         
         col_input1, col_input2 = st.columns([1, 2])
         with col_input1:
-            target_name = st.text_input("Tên Hợp chất Mục tiêu:", value="Chất X")
+            target_name = st.text_input("Tên Hợp chất Mục tiêu:", value="Nuciferine")
             max_time = st.number_input("Thời gian khảo sát (phút):", min_value=10, max_value=1440, value=120, step=10)
             
         with col_input2:
-            st.markdown("**Nhập thông số động học từ thực nghiệm của bạn:**")
+            st.markdown("**Nhập thông số động học từ thực nghiệm:**")
             c1, c2 = st.columns(2)
             qe = c1.number_input("Dung lượng bão hòa $q_e$ (mg/g):", min_value=0.1, value=25.0, step=0.5, format="%.2f")
             k2 = c2.number_input("Hằng số tốc độ $k_2$ (g/mg.phút):", min_value=0.0001, value=0.0150, step=0.001, format="%.4f")
 
-        # --- 3. XỬ LÝ TOÁN HỌC & THUẬT TOÁN ---
+        # --- 3. XỬ LÝ TOÁN HỌC & ALGORITHM ---
         if qe <= 0 or k2 <= 0:
             st.error("Lỗi: Các giá trị $q_e$ và $k_2$ phải lớn hơn 0.")
         else:
-            # Sinh mảng thời gian mượt mà
             time_steps = np.linspace(0, max_time, 200)
-            
-            # Tính toán nồng độ qt
             qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
-            
-            # Tính toán vận tốc tức thời (đạo hàm bậc 1 của qt theo t)
             velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
             
-            # Tính các mốc thời gian quan trọng
             h0 = k2 * (qe**2)
             t_50 = 1 / (k2 * qe)
             t_80 = 4 / (k2 * qe)
@@ -912,10 +906,8 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
             # --- 5. BIỂU ĐỒ KÉP (TRỰC QUAN HÓA CAO CẤP) ---
             st.subheader("🌌 3. Đồ thị Động học & Vận tốc Tức thời")
             
-            # Tạo Figure với 2 trục Y
             fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # Đường nồng độ qt (Trục Y1)
             fig.add_trace(
                 go.Scatter(x=time_steps, y=qt, name=f"Nồng độ $q_t$ ({target_name})",
                            mode='lines', line=dict(color='blue', width=3),
@@ -923,14 +915,12 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
                 secondary_y=False,
             )
 
-            # Đường vận tốc v_t (Trục Y2)
             fig.add_trace(
                 go.Scatter(x=time_steps, y=velocity, name="Vận tốc chiết $V_t$",
                            mode='lines', line=dict(color='red', width=2, dash='dot')),
                 secondary_y=True,
             )
 
-            # Các đường gióng (Mốc thời gian)
             critical_times = [(t_50, "50%"), (t_80, "80%"), (t_90, "90%")]
             for t_val, label in critical_times:
                 if t_val <= max_time:
@@ -943,7 +933,6 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
                     
                     fig.add_vline(x=t_val, line_dash="dash", line_color="gray", opacity=0.5)
 
-            # Đường giới hạn bão hòa qe
             fig.add_hline(y=qe, line_dash="solid", line_color="green", annotation_text=f"Max bão hòa ($q_e$ = {qe})", secondary_y=False)
 
             fig.update_layout(
@@ -960,19 +949,18 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
             # --- 6. PHÂN TÍCH CHIẾN LƯỢC SÂU ---
             st.subheader("💡 4. Phân tích Chiến lược & Tối ưu Năng lượng")
             
-            # Tính toán lượng thời gian lãng phí nếu chạy đến t95 so với t80
             time_diff_80_95 = t_95 - t_80
             yield_diff_80_95 = (0.95 * qe) - (0.80 * qe)
             
             st.info(f"""
             **Báo cáo Đánh giá Tối ưu Quy trình cho {target_name}:**
-            * **Giai đoạn Đột phá (0 đến {t_50:.1f} phút):** Hệ thống đạt vận tốc chiết cực đại ($h_0 = {h0:.3f}$). Gradient nồng độ giữa dược liệu và dung môi rất lớn, giúp rút trích nhanh chóng 50% sản lượng.
-            * **Giai đoạn Cản trở không gian ({t_50:.1f} đến {t_80:.1f} phút):** Tốc độ giảm theo hàm mũ (đường nét đứt màu đỏ trên biểu đồ). Quá trình khuếch tán qua màng tế bào bắt đầu bị giới hạn.
-            * **Giai đoạn Bão hòa lãng phí (Sau {t_80:.1f} phút):** Biểu đồ thể hiện rõ vận tốc $V_t$ gần như tiệm cận 0. 
+            * **Giai đoạn Đột phá (0 đến {t_50:.1f} phút):** Vận tốc chiết cực đại ($h_0 = {h0:.3f}$). Chênh lệch nồng độ lớn giúp rút trích nhanh chóng 50% sản lượng.
+            * **Giai đoạn Cản trở không gian ({t_50:.1f} đến {t_80:.1f} phút):** Tốc độ giảm theo hàm mũ (đường nét đứt màu đỏ). Quá trình khuếch tán bị giới hạn.
+            * **Giai đoạn Bão hòa lãng phí (Sau {t_80:.1f} phút):** Vận tốc $V_t$ tiệm cận 0. 
             
             **🔥 Khuyến nghị Kinh tế - Kỹ thuật:** 
-            Để tăng thêm chỉ **15%** hiệu suất (từ 80% lên 95%), hệ thống phải vận hành thêm **{time_diff_80_95:.1f} phút**. Điều này tiêu tốn năng lượng điện năng (gia nhiệt, máy khuấy, sóng siêu âm) hoàn toàn không tương xứng với lượng {target_name} thu được thêm ({yield_diff_80_95:.2f} mg/g). 
-            $\\Rightarrow$ **Điểm dừng kỹ thuật (Cut-off point) tối ưu nhất được đề xuất là: {t_80:.1f} phút đến {t_90:.1f} phút.**
+            Để tăng thêm **15%** hiệu suất (từ 80% lên 95%), hệ thống phải chạy thêm **{time_diff_80_95:.1f} phút**. Điều này tiêu tốn năng lượng điện (gia nhiệt, máy khuấy, siêu âm) không tương xứng với lượng {target_name} thu được thêm ({yield_diff_80_95:.2f} mg/g). 
+            $\\Rightarrow$ **Điểm dừng kỹ thuật (Cut-off point) tối ưu nhất: {t_80:.1f} phút đến {t_90:.1f} phút.**
             """)
 
             # --- 7. BẢNG DỮ LIỆU ---
@@ -986,7 +974,7 @@ elif page in ["6. Động học Chiết tách (Toán)", "6. Động học chiế
                 st.dataframe(df_display, use_container_width=True)
                 
     except Exception as e:
-        st.error(f"❌ Có lỗi toán học hoặc render xảy ra: {e}")
+        st.error(f"❌ Có lỗi xảy ra trong quá trình tính toán hoặc hiển thị: {e}")
   # --- MODULE 7: DỰ TOÁN QUY MÔ & KINH TẾ (TOÁN - NÂNG CẤP RÀNG BUỘC & PHÂN TÍCH CHI PHÍ) ---
 elif page == "7. Dự toán Quy mô & Kinh tế (Toán)":
     with st.sidebar:
