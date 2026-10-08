@@ -274,38 +274,70 @@ elif page == "2. Mô phỏng Docking 3D":
         - **Vùng sáng:** Binding Site (Túi liên kết).
         """)
         st.divider()
-        st.caption("Dữ liệu trích xuất từ Bảng 2 & Chương 2 - Báo cáo Nghiên cứu 2026.")
+        st.caption(
+            "Dữ liệu trích xuất từ Bảng 2 & Chương 2 - Báo cáo Nghiên cứu"
+            " 2026."
+        )
 
-    # DATABASE GỐC CỦA AN (Đảm bảo được đặt ở đây để không bao giờ bị None)
+    # DATABASE GỐC CỦA AN
     alkaloid_db = {
-        "Nuciferine": {"BACE1": {"dg": -8.3, "amin": "Asp32", "stab": 75}, "AChE": {"dg": -8.2, "amin": "Trp286", "stab": 70}},
-        "Nornuciferine": {"BACE1": {"dg": -8.3, "amin": "Gly120", "stab": 72}, "AChE": {"dg": -8.1, "amin": "Tyr124", "stab": 68}},
-        "Roemerine": {"BACE1": {"dg": -9.0, "amin": "Asp32/Asp228", "stab": 88}, "AChE": {"dg": -8.6, "amin": "Trp286", "stab": 90}},
-        "Pronuciferine": {"BACE1": {"dg": -8.6, "amin": "Ser203", "stab": 78}, "AChE": {"dg": -8.6, "amin": "Phe338", "stab": 80}},
-        "Liensinine": {"BACE1": {"dg": -9.6, "amin": "Asp32", "stab": 95}, "AChE": {"dg": -7.5, "amin": "His447", "stab": 65}},
-        "Neferine": {"BACE1": {"dg": -9.0, "amin": "Tyr124", "stab": 85}, "AChE": {"dg": -7.5, "amin": "Trp286", "stab": 62}},
-        "Isoliensinine": {"BACE1": {"dg": -9.6, "amin": "Asp32/Asp228", "stab": 96}, "AChE": {"dg": -7.7, "amin": "Trp286", "stab": 72}}
+        "Nuciferine": {
+            "BACE1": {"dg": -8.3, "amin": "Asp32", "stab": 75},
+            "AChE": {"dg": -8.2, "amin": "Trp286", "stab": 70},
+        },
+        "Nornuciferine": {
+            "BACE1": {"dg": -8.3, "amin": "Gly120", "stab": 72},
+            "AChE": {"dg": -8.1, "amin": "Tyr124", "stab": 68},
+        },
+        "Roemerine": {
+            "BACE1": {"dg": -9.0, "amin": "Asp32/Asp228", "stab": 88},
+            "AChE": {"dg": -8.6, "amin": "Trp286", "stab": 90},
+        },
+        "Pronuciferine": {
+            "BACE1": {"dg": -8.6, "amin": "Ser203", "stab": 78},
+            "AChE": {"dg": -8.6, "amin": "Phe338", "stab": 80},
+        },
+        "Liensinine": {
+            "BACE1": {"dg": -9.6, "amin": "Asp32", "stab": 95},
+            "AChE": {"dg": -7.5, "amin": "His447", "stab": 65},
+        },
+        "Neferine": {
+            "BACE1": {"dg": -9.0, "amin": "Tyr124", "stab": 85},
+            "AChE": {"dg": -7.5, "amin": "Trp286", "stab": 62},
+        },
+        "Isoliensinine": {
+            "BACE1": {"dg": -9.6, "amin": "Asp32/Asp228", "stab": 96},
+            "AChE": {"dg": -7.7, "amin": "Trp286", "stab": 72},
+        },
     }
     controls = {
         "BACE1": {"name": "Verubecestat", "dg": -8.5},
-        "AChE": {"name": "Donepezil", "dg": -7.9}
+        "AChE": {"name": "Donepezil", "dg": -7.9},
     }
 
-    tab_view, tab_compare = st.tabs(["🔍 Chi tiết tương tác 3D", "⚖️ So sánh đối chứng (Benchmarking)"])
+    tab_view, tab_compare = st.tabs(
+        ["🔍 Chi tiết tương tác 3D", "⚖️ So sánh đối chứng (Benchmarking)"]
+    )
 
     with tab_view:
         st.subheader("🖥️ Trình diễn tương tác phân tử")
-        st.caption("Chọn mục tiêu và hợp chất để quan sát cách Alkaloid 'khóa' các Enzyme gây bệnh Alzheimer.")
+        st.caption(
+            "Chọn mục tiêu và hợp chất để quan sát cách Alkaloid 'khóa' các"
+            " Enzyme gây bệnh Alzheimer."
+        )
 
-        target = st.radio("Chọn Enzyme mục tiêu:", ["BACE1 (Protein 4XXS)", "AChE (Protein 7D9O)"], horizontal=True)
+        target = st.radio(
+            "Chọn Enzyme mục tiêu:",
+            ["BACE1 (Protein 4XXS)", "AChE (Protein 7D9O)"],
+            horizontal=True,
+        )
         p_key = "BACE1" if "BACE1" in target else "AChE"
         pdb_id = "4XXS" if p_key == "BACE1" else "7D9O"
-        
-        # ĐOẠN FIX LỖI TYPEERROR QUAN TRỌNG:
-        selected = st.session_state.get('selected_compound', 'Roemerine')
+
+        selected = st.session_state.get("selected_compound", "Roemerine")
         if selected not in alkaloid_db:
-            selected = list(alkaloid_db.keys())[0] # Tự lấy chất đầu tiên nếu lỗi
-        
+            selected = list(alkaloid_db.keys())[0]
+
         data = alkaloid_db[selected][p_key]
 
         c1, c2 = st.columns([1, 2.5])
@@ -313,58 +345,139 @@ elif page == "2. Mô phỏng Docking 3D":
             with st.container(border=True):
                 st.markdown(f"### 🧪 {selected}")
                 st.write(f"Đích đến: **{p_key}**")
-                hl = st.toggle("Hiện Binding Site", value=True, help="Làm nổi bật túi liên kết nơi Alkaloid tác động.")
-                
+                hl = st.toggle(
+                    "Hiện Binding Site",
+                    value=True,
+                    help="Làm nổi bật túi liên kết nơi Alkaloid tác động.",
+                )
+
                 st.divider()
                 st.markdown("**📊 Chỉ số năng lượng:**")
-                st.metric("Năng lượng ΔG", f"{data['dg']} kcal/mol", 
-                          help="Giá trị càng âm, liên kết càng bền vững và hiệu quả ức chế càng cao.")
-                
+                st.metric(
+                    "Năng lượng ΔG",
+                    f"{data['dg']} kcal/mol",
+                    help=(
+                        "Giá trị càng âm, liên kết càng bền vững và hiệu quả"
+                        " ức chế càng cao."
+                    ),
+                )
+
                 st.write(f"📍 **Acid amin chính:** `{data['amin']}`")
-                st.progress(data['stab']/100, text=f"Độ bền phức hợp: {data['stab']}%")
-                
-                if "Asp32" in data['amin']:
-                    st.success("🎯 **Cơ chế:** Khóa cặp Asp xúc tác, ngăn chặn hình thành mảng bám Amyloid.")
-                elif "Trp286" in data['amin']:
-                    st.success("🎯 **Cơ chế:** Tương tác tại vùng PAS, ngăn chặn sự tích tụ Acetylcholine.")
+                st.progress(
+                    data["stab"] / 100,
+                    text=f"Độ bền phức hợp: {data['stab']}%",
+                )
+
+                if "Asp32" in data["amin"]:
+                    st.success(
+                        "🎯 **Cơ chế:** Khóa cặp Asp xúc tác, ngăn chặn hình"
+                        " thành mảng bám Amyloid."
+                    )
+                elif "Trp286" in data["amin"]:
+                    st.success(
+                        "🎯 **Cơ chế:** Tương tác tại vùng PAS, ngăn chặn sự"
+                        " tích tụ Acetylcholine."
+                    )
 
         with c2:
             with st.container(border=True):
-                with st.spinner("Đang kết nối thư viện PDB và kết xuất mô hình 3D..."):
+                with st.spinner(
+                    "Đang kết nối thư viện PDB và kết xuất mô hình 3D..."
+                ):
                     pdb_string = fetch_pdb(pdb_id)
                     if pdb_string:
-                        showmol(render_3d_molecule(pdb_string, highlight_site=hl), height=500, width=700)
-                st.caption(f"Mô hình cấu trúc tinh thể Protein {pdb_id} tương tác với {selected}")
+                        showmol(
+                            render_3d_molecule(pdb_string, highlight_site=hl),
+                            height=500,
+                            width=700,
+                        )
+                st.caption(
+                    f"Mô hình cấu trúc tinh thể Protein {pdb_id} tương tác với"
+                    f" {selected}"
+                )
 
     with tab_compare:
         st.subheader("⚖️ Đối chiếu hiệu quả với thuốc chuẩn")
-        st.write("So sánh năng lượng liên kết của Alkaloid tự nhiên với các thuốc điều trị hiện hành.")
+        st.write(
+            "So sánh năng lượng liên kết của Alkaloid tự nhiên với các thuốc"
+            " điều trị hiện hành."
+        )
 
-        comp_p = st.radio("Protein đối chứng:", ["BACE1", "AChE"], horizontal=True, key="comp_p")
+        comp_p = st.radio(
+            "Protein đối chứng:", ["BACE1", "AChE"], horizontal=True, key="comp_p"
+        )
         control_data = controls[comp_p]
-        
+
         with st.container(border=True):
-            # Đồng bộ lại selectbox đối chứng
-            selected_comp = st.selectbox("Chọn Alkaloid để đối chứng:", list(alkaloid_db.keys()), 
-                                         index=list(alkaloid_db.keys()).index(selected) if selected in alkaloid_db else 0)
-            
-            user_dg = alkaloid_db[selected_comp][comp_p]['dg']
-            
+            selected_comp = st.selectbox(
+                "Chọn Alkaloid để đối chứng:",
+                list(alkaloid_db.keys()),
+                index=(
+                    list(alkaloid_db.keys()).index(selected)
+                    if selected in alkaloid_db
+                    else 0
+                ),
+            )
+
+            user_dg = alkaloid_db[selected_comp][comp_p]["dg"]
+
             col1, col2 = st.columns(2)
             col1.metric(f"Alkaloid: {selected_comp}", f"{user_dg} kcal/mol")
-            col2.metric(f"Thuốc: {control_data['name']}", f"{control_data['dg']} kcal/mol", 
-                        delta=round(user_dg - control_data['dg'], 2), delta_color="inverse")
-            
-            if user_dg < control_data['dg']:
-                st.success(f"💡 **Phân tích:** {selected_comp} có năng lượng tự do thấp hơn, cho thấy ái lực liên kết mạnh hơn thuốc {control_data['name']}.")
-            
+            col2.metric(
+                f"Thuốc: {control_data['name']}",
+                f"{control_data['dg']} kcal/mol",
+                delta=round(user_dg - control_data["dg"], 2),
+                delta_color="inverse",
+            )
+
+            if user_dg < control_data["dg"]:
+                st.success(
+                    f"💡 **Phân tích:** {selected_comp} có năng lượng tự do"
+                    " thấp hơn, cho thấy ái lực liên kết mạnh hơn thuốc"
+                    f" {control_data['name']}."
+                )
+
         st.markdown("#### Đồ thị so sánh ái lực (Affinity Comparison)")
+
+        # --- ĐOẠN ĐÃ ĐƯỢC CẬP NHẬT THEO YÊU CẦU THIẾT KẾ ---
         chart_data = pd.DataFrame({
-            "Hợp chất": [selected_comp, control_data['name']],
-            "Năng lượng (kcal/mol)": [abs(user_dg), abs(control_data['dg'])]
+            "Hợp chất": [control_data["name"], selected_comp],
+            "Năng lượng (kcal/mol)": [
+                abs(control_data["dg"]),
+                abs(user_dg),
+            ],
         })
-        st.bar_chart(chart_data.set_index("Hợp chất"))
-        st.caption("Lưu ý: Giá trị trị tuyệt đối càng cao thể hiện khả năng gắn kết càng tốt.")
+
+        import plotly.express as px
+
+        fig = px.bar(
+            chart_data,
+            x="Hợp chất",
+            y="Năng lượng (kcal/mol)",
+            text="Năng lượng (kcal/mol)",
+            color="Hợp chất",
+            color_discrete_sequence=["#1f77b4", "#0066cc"],
+        )
+
+        # Định dạng trục X viết ngang (tickangle=0)
+        fig.update_xaxes(title_text="", tickangle=0)
+        fig.update_yaxes(title_text="Giá trị tuyệt đối |ΔG|")
+        fig.update_layout(
+            showlegend=False,
+            height=380,
+            margin=dict(l=20, r=20, t=20, b=20),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Dòng lưu ý tô đậm và màu đỏ
+        st.markdown(
+            "<p style='color: red; font-weight: bold; margin-top: -10px;'>"
+            "Lưu ý: Giá trị trị tuyệt đối càng cao thể hiện khả năng gắn kết"
+            " càng tốt."
+            "</p>",
+            unsafe_allow_html=True,
+        )
 # --- MODULE 3: PHÂN TÍCH & XUẤT BÁO CÁO ---
 if page == "3. Phân tích & Xuất báo cáo":
     st.title("📊 Phân tích Kết quả & Xuất báo cáo")
