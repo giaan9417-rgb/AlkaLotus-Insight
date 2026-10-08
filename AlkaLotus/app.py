@@ -579,15 +579,29 @@ nghiên cứu Alzheimer từ thảo dược tự nhiên.
                        file_name=f"AlkaLotus_Report_{selected_data['Name']}.txt", 
                        mime="text/plain")
 
-elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên tục)"] or "4. Phân tích" in page:
-    import pandas as pd
+# --- MODULE 4: PHÂN TÍCH CẤU TRÚC & TƯƠNG ĐỒNG ĐA THÔNG SỐ ---
+elif (
+    page
+    in [
+        "4. Phân tích cấu trúc",
+        (
+            "4. Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên"
+            " tục)"
+        ),
+    ]
+    or "4. Phân tích" in page
+):
     import numpy as np
+    import pandas as pd
     import plotly.express as px
     import streamlit as st
 
-    st.title("🧬 Module 4: Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên tục)")
+    st.title(
+        "🧬 Module 4: Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên"
+        " tục)"
+    )
 
-    # --- HƯỚNG DẪN MODULE 4 (ĐỒNG BỘ THEO MODULE 1) ---
+    # --- HƯỚNG DẪN MODULE 4 ---
     with st.sidebar:
         st.markdown("---")
         st.markdown("### 📖 Hướng dẫn Module 4")
@@ -611,45 +625,112 @@ elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tươn
     # 1. Định nghĩa 2 Thuốc Đối chứng Chuẩn
     REF_DRUGS = {
         "Donepezil (Chuẩn AChE)": {
-            "MW": 379.50, "LogP": 4.27, "TPSA": 38.8, 
-            "HBD": 0.0, "HBA": 4.0, "ΔG AChE": -11.5, "ΔG BACE1": -7.2
+            "MW": 379.50,
+            "LogP": 4.27,
+            "TPSA": 38.8,
+            "HBD": 0.0,
+            "HBA": 4.0,
+            "ΔG AChE": -11.5,
+            "ΔG BACE1": -7.2,
         },
         "Verubecestat (Chuẩn BACE1)": {
-            "MW": 409.41, "LogP": 1.15, "TPSA": 104.9, 
-            "HBD": 2.0, "HBA": 6.0, "ΔG AChE": -6.8, "ΔG BACE1": -10.4
-        }
+            "MW": 409.41,
+            "LogP": 1.15,
+            "TPSA": 104.9,
+            "HBD": 2.0,
+            "HBA": 6.0,
+            "ΔG AChE": -6.8,
+            "ΔG BACE1": -10.4,
+        },
     }
 
-    # 2. Giao diện Nhập liệu Thông số
+    # 2. Giao diện Nhập liệu Thông số (Đã xóa nút + và - bằng step=None)
     st.subheader("⚙️ Nhập thông số Hợp chất Thử nghiệm")
-    st.info("💡 Nhập trực tiếp các chỉ số hóa lý và năng lượng. Hệ thống sẽ tự động tổng hợp để tính toán độ tương đồng Tanimoto đa chiều.")
-    
-    num_comp = st.number_input("Số lượng hợp chất cần phân tích:", min_value=1, max_value=15, value=2, step=1)
-    
+    st.info(
+        "💡 Nhập trực tiếp các chỉ số hóa lý và năng lượng. Hệ thống sẽ tự động"
+        " tổng hợp để tính toán độ tương đồng Tanimoto đa chiều."
+    )
+
+    num_comp = st.number_input(
+        "Số lượng hợp chất cần phân tích:",
+        min_value=1,
+        max_value=15,
+        value=2,
+        step=None,
+    )
+
     compounds_input = []
-    
+
     for i in range(int(num_comp)):
         st.markdown(f"**🔹 Hợp chất #{i+1}**")
-        c_name = st.text_input(f"Tên hợp chất #{i+1}:", value=f"Alkaloid_{i+1}", key=f"name_{i}")
-        
+        c_name = st.text_input(
+            f"Tên hợp chất #{i+1}:", value=f"Alkaloid_{i+1}", key=f"name_{i}"
+        )
+
         col1, col2, col3 = st.columns(3)
-        c_mw = col1.number_input(f"Khối lượng (MW) #{i+1}:", value=281.35 + (i*10.0), format="%.2f", key=f"mw_{i}")
-        c_logp = col2.number_input(f"Độ phân cực (LogP) #{i+1}:", value=2.50 + (i*0.5), format="%.2f", key=f"logp_{i}")
-        c_tpsa = col3.number_input(f"Diện tích bề mặt (TPSA) #{i+1}:", value=20.0 + (i*5.0), format="%.2f", key=f"tpsa_{i}")
-        
+        c_mw = col1.number_input(
+            f"Khối lượng (MW) #{i+1}:",
+            value=281.35 + (i * 10.0),
+            format="%.2f",
+            key=f"mw_{i}",
+            step=None,
+        )
+        c_logp = col2.number_input(
+            f"Độ phân cực (LogP) #{i+1}:",
+            value=2.50 + (i * 0.5),
+            format="%.2f",
+            key=f"logp_{i}",
+            step=None,
+        )
+        c_tpsa = col3.number_input(
+            f"Diện tích bề mặt (TPSA) #{i+1}:",
+            value=20.0 + (i * 5.0),
+            format="%.2f",
+            key=f"tpsa_{i}",
+            step=None,
+        )
+
         col4, col5, col6 = st.columns(3)
-        c_hbd = col4.number_input(f"Số liên kết cho H (HBD) #{i+1}:", value=1.0, format="%.1f", key=f"hbd_{i}")
-        c_hba = col5.number_input(f"Số liên kết nhận H (HBA) #{i+1}:", value=2.0, format="%.1f", key=f"hba_{i}")
-        c_ga = col6.number_input(f"ΔG AChE (kcal/mol) #{i+1}:", value=-8.80, format="%.2f", key=f"ga_{i}")
-        
-        c_gb = st.number_input(f"ΔG BACE1 (kcal/mol) #{i+1}:", value=-8.10, format="%.2f", key=f"gb_{i}")
+        c_hbd = col4.number_input(
+            f"Số liên kết cho H (HBD) #{i+1}:",
+            value=1.0,
+            format="%.1f",
+            key=f"hbd_{i}",
+            step=None,
+        )
+        c_hba = col5.number_input(
+            f"Số liên kết nhận H (HBA) #{i+1}:",
+            value=2.0,
+            format="%.1f",
+            key=f"hba_{i}",
+            step=None,
+        )
+        c_ga = col6.number_input(
+            f"ΔG AChE (kcal/mol) #{i+1}:",
+            value=-8.80,
+            format="%.2f",
+            key=f"ga_{i}",
+            step=None,
+        )
+
+        c_gb = st.number_input(
+            f"ΔG BACE1 (kcal/mol) #{i+1}:",
+            value=-8.10,
+            format="%.2f",
+            key=f"gb_{i}",
+            step=None,
+        )
         st.divider()
-        
+
         compounds_input.append({
             "Hợp chất": c_name,
-            "MW": float(c_mw), "LogP": float(c_logp), "TPSA": float(c_tpsa),
-            "HBD": float(c_hbd), "HBA": float(c_hba), 
-            "ΔG AChE": float(c_ga), "ΔG BACE1": float(c_gb)
+            "MW": float(c_mw),
+            "LogP": float(c_logp),
+            "TPSA": float(c_tpsa),
+            "HBD": float(c_hbd),
+            "HBA": float(c_hba),
+            "ΔG AChE": float(c_ga),
+            "ΔG BACE1": float(c_gb),
         })
 
     # Chỉ chạy thuật toán khi người dùng đã có dữ liệu hợp lệ
@@ -662,19 +743,29 @@ elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tươn
                 row.update(props)
                 all_data.append(row)
             all_data.extend(compounds_input)
-            
+
             df_all = pd.DataFrame(all_data)
-            features = ["MW", "LogP", "TPSA", "HBD", "HBA", "ΔG AChE", "ΔG BACE1"]
-            
-            # Chuẩn hóa Min-Max (0-1) an toàn
+            features = [
+                "MW",
+                "LogP",
+                "TPSA",
+                "HBD",
+                "HBA",
+                "ΔG AChE",
+                "ΔG BACE1",
+            ]
+
+            # Chuẩn hóa Min-Max (0-1)
             df_norm = df_all.copy()
             for col in features:
                 min_val = df_norm[col].min()
                 max_val = df_norm[col].max()
                 if max_val > min_val:
-                    df_norm[col] = (df_norm[col] - min_val) / (max_val - min_val)
+                    df_norm[col] = (df_norm[col] - min_val) / (
+                        max_val - min_val
+                    )
                 else:
-                    df_norm[col] = 1.0 
+                    df_norm[col] = 1.0
 
             # Hàm tính Tanimoto liên tục
             def calc_continuous_tanimoto(vec1, vec2):
@@ -682,14 +773,14 @@ elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tươn
                 sum_sq1 = np.dot(vec1, vec1)
                 sum_sq2 = np.dot(vec2, vec2)
                 denominator = sum_sq1 + sum_sq2 - dot_product
-                if denominator <= 0.0001:  # Chống lỗi chia cho 0 hoặc số quá nhỏ
+                if denominator <= 0.0001:
                     return 1.0
                 return round(dot_product / denominator, 3)
 
             # 4. Tính toán Ma trận Tương đồng
             matrix_size = len(df_norm)
             sim_matrix = np.zeros((matrix_size, matrix_size))
-            
+
             for i in range(matrix_size):
                 vec_i = df_norm.iloc[i][features].values.astype(float)
                 for j in range(matrix_size):
@@ -697,15 +788,17 @@ elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tươn
                     sim_matrix[i, j] = calc_continuous_tanimoto(vec_i, vec_j)
 
             names = df_norm["Hợp chất"].tolist()
-            df_sim_matrix = pd.DataFrame(sim_matrix, index=names, columns=names)
+            df_sim_matrix = pd.DataFrame(
+                sim_matrix, index=names, columns=names
+            )
 
             # Trích xuất kết quả đưa vào bảng
             results_list = []
-            for i in range(2, matrix_size): 
+            for i in range(2, matrix_size):
                 results_list.append({
                     "Hợp chất": names[i],
                     "Tanimoto vs Donepezil": df_sim_matrix.iloc[i, 0],
-                    "Tanimoto vs Verubecestat": df_sim_matrix.iloc[i, 1]
+                    "Tanimoto vs Verubecestat": df_sim_matrix.iloc[i, 1],
                 })
             df_results = pd.DataFrame(results_list)
 
@@ -715,50 +808,96 @@ elif page in ["4. Phân tích cấu trúc", "4. Phân tích Cấu trúc & Tươn
             st.dataframe(df_results, use_container_width=True)
 
             st.subheader("📈 Biểu đồ Cột: So sánh Tương đồng với Thuốc Chuẩn")
-            df_melted = df_results.melt(id_vars=["Hợp chất"], 
-                                        value_vars=["Tanimoto vs Donepezil", "Tanimoto vs Verubecestat"],
-                                        var_name="Đối tượng So sánh", 
-                                        value_name="Độ Tương Đồng")
-            
-            fig_bar = px.bar(df_melted, x="Hợp chất", y="Độ Tương Đồng", 
-                             color="Đối tượng So sánh", barmode="group",
-                             title="Mức độ tương đồng so với Thuốc chuẩn",
-                             color_discrete_sequence=["#1f77b4", "#ff7f0e"])
+            df_melted = df_results.melt(
+                id_vars=["Hợp chất"],
+                value_vars=[
+                    "Tanimoto vs Donepezil",
+                    "Tanimoto vs Verubecestat",
+                ],
+                var_name="Đối tượng So sánh",
+                value_name="Độ Tương Đồng",
+            )
+
+            fig_bar = px.bar(
+                df_melted,
+                x="Hợp chất",
+                y="Độ Tương Đồng",
+                color="Đối tượng So sánh",
+                barmode="group",
+                title="Mức độ tương đồng so với Thuốc chuẩn",
+                color_discrete_sequence=["#1f77b4", "#ff7f0e"],
+            )
             fig_bar.update_layout(yaxis=dict(range=[0, 1.1]))
             st.plotly_chart(fig_bar, use_container_width=True)
 
-            st.subheader("🧩 Ma trận Tương đồng Toàn diện (Similarity Matrix)")
-            fig_matrix = px.imshow(df_sim_matrix,
-                                   labels=dict(x="Hợp chất", y="Hợp chất", color="Tanimoto"),
-                                   x=names, y=names,
-                                   color_continuous_scale="Blues",
-                                   text_auto=True, 
-                                   aspect="auto")
+            st.subheader(
+                "🧩 Ma trận Tương đồng Toàn diện (Similarity Matrix)"
+            )
+            fig_matrix = px.imshow(
+                df_sim_matrix,
+                labels=dict(
+                    x="Hợp chất", y="Hợp chất", color="Tanimoto"
+                ),
+                x=names,
+                y=names,
+                color_continuous_scale="Blues",
+                text_auto=True,
+                aspect="auto",
+            )
             fig_matrix.update_xaxes(side="top")
             st.plotly_chart(fig_matrix, use_container_width=True)
-            
+
             st.subheader("🎯 Biểu đồ Tương quan Đặc tính - Hoạt tính (SAR)")
             plot_sar_data = []
             for i in range(matrix_size):
-                c_type = "Thuốc Chuẩn AChE" if i == 0 else "Thuốc Chuẩn BACE1" if i == 1 else "Hợp chất thử nghiệm"
+                c_type = (
+                    "Thuốc Chuẩn AChE"
+                    if i == 0
+                    else (
+                        "Thuốc Chuẩn BACE1"
+                        if i == 1
+                        else "Hợp chất thử nghiệm"
+                    )
+                )
                 plot_sar_data.append({
                     "Hợp chất": names[i],
                     "Tanimoto vs Donepezil": df_sim_matrix.iloc[i, 0],
-                    "ΔG AChE (kcal/mol)": float(df_all.iloc[i]["ΔG AChE"]),
-                    "Loại": c_type
+                    "ΔG AChE (kcal/mol)": float(
+                        df_all.iloc[i]["ΔG AChE"]
+                    ),
+                    "Loại": c_type,
                 })
             df_sar = pd.DataFrame(plot_sar_data)
-            
-            fig_sar = px.scatter(df_sar, x="Tanimoto vs Donepezil", y="ΔG AChE (kcal/mol)",
-                                 color="Loại", text="Hợp chất", size_max=15,
-                                 title="Phân tích SAR: Tương đồng vs Donepezil và Năng lượng Liên kết")
-            fig_sar.update_traces(textposition='top center', marker=dict(size=12, line=dict(width=1, color='black')))
-            fig_sar.update_yaxes(autorange="reversed") 
+
+            fig_sar = px.scatter(
+                df_sar,
+                x="Tanimoto vs Donepezil",
+                y="ΔG AChE (kcal/mol)",
+                color="Loại",
+                text="Hợp chất",
+                size_max=15,
+                title=(
+                    "Phân tích SAR: Tương đồng vs Donepezil và Năng lượng"
+                    " Liên kết"
+                ),
+            )
+            fig_sar.update_traces(
+                textposition="top center",
+                marker=dict(size=12, line=dict(width=1, color="black")),
+            )
+            fig_sar.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_sar, use_container_width=True)
 
-            st.success("✅ Module 4 đã chạy thành công! Không sử dụng SMILES, thuật toán Tanimoto Liên tục được áp dụng chính xác bằng cách chuẩn hóa các vector thông số đầu vào.")
+            st.success(
+                "✅ Module 4 đã chạy thành công! Thuật toán Tanimoto Liên tục"
+                " được áp dụng chính xác bằng cách chuẩn hóa các vector"
+                " thông số đầu vào."
+            )
         except Exception as e:
-            st.error(f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}. Vui lòng kiểm tra lại các thông số nhập vào.")
+            st.error(
+                f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}."
+                " Vui lòng kiểm tra lại các thông số nhập vào."
+            )
 elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
     import numpy as np
     import pandas as pd
