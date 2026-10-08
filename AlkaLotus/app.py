@@ -1208,9 +1208,9 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(label="Vận tốc ban đầu ($h_0$)", value=f"{h0:.3f}", delta="mg/g.phút", delta_color="normal")
-            m2.metric(label="Thời gian 50% ($t_{50}$)", value=f"{t_50:.1f} ph", help="Thời gian đạt 1/2 sản lượng")
-            m3.metric(label="Thời gian 80% ($t_{80}$)", value=f"{t_80:.1f} ph", help="Ngưỡng bắt đầu bão hòa")
-            m4.metric(label="Thời gian 90% ($t_{90}$)", value=f"{t_90:.1f} ph", help="Ngưỡng kinh tế tối đa")
+            m2.metric(label="Thời gian 50% ($t_{50}$)", value=f"{t_50:.1f} phút", help="Thời gian đạt 1/2 sản lượng")
+            m3.metric(label="Thời gian 80% ($t_{80}$)", value=f"{t_80:.1f} phút", help="Ngưỡng bắt đầu bão hòa")
+            m4.metric(label="Thời gian 90% ($t_{90}$)", value=f"{t_90:.1f} phút", help="Ngưỡng kinh tế tối đa")
 
             # --- 5. BIỂU ĐỒ KÉP (TRỰC QUAN HÓA CAO CẤP) ---
             st.subheader("🌌 3. Đồ thị Động học & Vận tốc Tức thời")
@@ -1237,7 +1237,7 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
                     fig.add_trace(go.Scatter(
                         x=[t_val], y=[q_val], mode='markers+text',
                         marker=dict(color='black', size=8, symbol='diamond'),
-                        text=[f"{label} ({t_val:.1f}p)"], textposition="top left", showlegend=False
+                        text=[f"{label} ({t_val:.1f} phút)"], textposition="top left", showlegend=False
                     ), secondary_y=False)
                     
                     fig.add_vline(x=t_val, line_dash="dash", line_color="gray", opacity=0.5)
