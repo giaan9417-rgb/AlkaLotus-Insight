@@ -596,6 +596,19 @@ elif (
     import plotly.express as px
     import streamlit as st
 
+    # --- ĐOẠN CSS XÓA TRIỆT ĐỂ NÚT CỘNG (+) VÀ TRỪ (-) ---
+    st.markdown(
+        """
+        <style>
+        button[data-testid="stNumberInputStepDown"],
+        button[data-testid="stNumberInputStepUp"] {
+            display: none !important;
+        }
+        </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
     st.title(
         "🧬 Module 4: Phân tích Cấu trúc & Tương đồng Đa thông số (Tanimoto Liên"
         " tục)"
@@ -644,7 +657,7 @@ elif (
         },
     }
 
-    # 2. Giao diện Nhập liệu Thông số (Đã xóa nút + và - bằng step=None)
+    # 2. Giao diện Nhập liệu Thông số
     st.subheader("⚙️ Nhập thông số Hợp chất Thử nghiệm")
     st.info(
         "💡 Nhập trực tiếp các chỉ số hóa lý và năng lượng. Hệ thống sẽ tự động"
@@ -652,11 +665,7 @@ elif (
     )
 
     num_comp = st.number_input(
-        "Số lượng hợp chất cần phân tích:",
-        min_value=1,
-        max_value=15,
-        value=2,
-        step=None,
+        "Số lượng hợp chất cần phân tích:", min_value=1, max_value=15, value=2
     )
 
     compounds_input = []
@@ -673,21 +682,18 @@ elif (
             value=281.35 + (i * 10.0),
             format="%.2f",
             key=f"mw_{i}",
-            step=None,
         )
         c_logp = col2.number_input(
             f"Độ phân cực (LogP) #{i+1}:",
             value=2.50 + (i * 0.5),
             format="%.2f",
             key=f"logp_{i}",
-            step=None,
         )
         c_tpsa = col3.number_input(
             f"Diện tích bề mặt (TPSA) #{i+1}:",
             value=20.0 + (i * 5.0),
             format="%.2f",
             key=f"tpsa_{i}",
-            step=None,
         )
 
         col4, col5, col6 = st.columns(3)
@@ -696,21 +702,18 @@ elif (
             value=1.0,
             format="%.1f",
             key=f"hbd_{i}",
-            step=None,
         )
         c_hba = col5.number_input(
             f"Số liên kết nhận H (HBA) #{i+1}:",
             value=2.0,
             format="%.1f",
             key=f"hba_{i}",
-            step=None,
         )
         c_ga = col6.number_input(
             f"ΔG AChE (kcal/mol) #{i+1}:",
             value=-8.80,
             format="%.2f",
             key=f"ga_{i}",
-            step=None,
         )
 
         c_gb = st.number_input(
@@ -718,7 +721,6 @@ elif (
             value=-8.10,
             format="%.2f",
             key=f"gb_{i}",
-            step=None,
         )
         st.divider()
 
@@ -888,11 +890,7 @@ elif (
             fig_sar.update_yaxes(autorange="reversed")
             st.plotly_chart(fig_sar, use_container_width=True)
 
-            st.success(
-                "✅ Module 4 đã chạy thành công! Thuật toán Tanimoto Liên tục"
-                " được áp dụng chính xác bằng cách chuẩn hóa các vector"
-                " thông số đầu vào."
-            )
+            st.success("✅ Module 4 đã chạy thành công!")
         except Exception as e:
             st.error(
                 f"❌ Có lỗi toán học xảy ra trong quá trình tính toán: {e}."
