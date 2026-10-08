@@ -1140,7 +1140,7 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
     try:
         st.title("📈 Mô phỏng Động học & Vận tốc Chiết tách")
 
-        # --- HƯỚNG DẪN MODULE 6 (ĐỒNG BỘ THEO CÁC MODULE TRƯỚC) ---
+        # --- HƯỚNG DẪN MODULE 6 ---
         with st.sidebar:
             st.markdown("---")
             st.markdown("### 📖 Hướng dẫn Module 6")
@@ -1148,9 +1148,9 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             **Mục tiêu:** Mô phỏng diễn biến nồng độ và vận tốc chiết tách theo thời gian dựa trên mô hình Động học giả bậc hai (PSO - Pseudo-Second-Order) để tìm điểm dừng kỹ thuật (Cut-off point) tối ưu chi phí và năng lượng.
 
             **Các bước thực hiện:**
-            1. **Thiết lập Cấu hình:** Nhập tên hợp chất mục tiêu, thời gian khảo sát tổng thể, cùng hai thông số thực nghiệm: dung lượng bão hòa $q_e$ và hằng số tốc độ $k_2$.
-            2. **Theo dõi Báo cáo & Đồ thị:** Quan sát các mốc thời gian quan trọng ($t_{50}, t_{80}, t_{90}$) và đồ thị kép kết hợp giữa nồng độ $q_t$ với vận tốc chiết tức thời $V_t$.
-            3. **Phân tích Tối ưu Năng lượng:** Đánh giá điểm dừng kỹ thuật khuyến nghị (Cut-off point) để tránh lãng phí năng lượng ở giai đoạn bão hòa và xuất bảng dữ liệu chi tiết.
+            1. **Thiết lập Cấu hình:** Nhập tên hợp chất mục tiêu, khối lượng nguyên liệu mẫu, thời gian khảo sát, dung lượng bão hòa $q_e$ và hằng số tốc độ $k_2$.
+            2. **Theo dõi Báo cáo & Đồ thị:** Quan sát các mốc thời gian quan trọng ($t_{50}, t_{80}, t_{90}$) và đồ thị kép.
+            3. **Phân tích Tối ưu Năng lượng:** Đánh giá điểm dừng kỹ thuật khuyến nghị và xuất bảng dữ liệu chi tiết có quy đổi khối lượng thực tế (mg, g).
             """)
 
         st.markdown("""
@@ -1175,12 +1175,13 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
 
         st.markdown("---")
 
-        # --- 2. GIAO DIỆN NHẬP THÔNG SỐ (MỞ RỘNG ĐA CHẤT) ---
+        # --- 2. GIAO DIỆN NHẬP THÔNG SỐ ---
         st.subheader("⚙️ 1. Thiết lập Cấu hình Thực nghiệm")
         
         col_input1, col_input2 = st.columns([1, 2])
         with col_input1:
             target_name = st.text_input("Tên Hợp chất Mục tiêu:", value="Nuciferine")
+            sample_mass = st.number_input("Khối lượng nguyên liệu mẫu m (g):", min_value=0.1, value=100.0, step=10.0, help="Tổng khối lượng dược liệu/nguyên liệu khô đưa vào chiết")
             max_time = st.number_input("Thời gian khảo sát (phút):", min_value=10, max_value=1440, value=120, step=10)
             
         with col_input2:
@@ -1190,8 +1191,8 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             k2 = c2.number_input("Hằng số tốc độ $k_2$ (g/mg.phút):", min_value=0.0001, value=0.0150, step=0.001, format="%.4f")
 
         # --- 3. XỬ LÝ TOÁN HỌC & ALGORITHM ---
-        if qe <= 0 or k2 <= 0:
-            st.error("Lỗi: Các giá trị $q_e$ và $k_2$ phải lớn hơn 0.")
+        if qe <= 0 or k2 <= 0 or sample_mass <= 0:
+            st.error("Lỗi: Các giá trị $q_e$, $k_2$ và khối lượng nguyên liệu $m$ phải lớn hơn 0.")
         else:
             h0 = k2 * (qe**2)
             t_50 = 1 / (k2 * qe)
@@ -1199,7 +1200,7 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             t_90 = 9 / (k2 * qe)
             t_95 = 19 / (k2 * qe)
 
-            # CHÈN BỔ SUNG CÁC MỐC THỜI GIAN TÍNH TOÁN VÀO DÃY TIME_STEPS
+            # Chèn các mốc thời gian đặc biệt
             milestone_times = [t for t in [t_50, t_80, t_90, t_95] if t <= max_time]
             raw_time_steps = np.concatenate([np.linspace(0, max_time, 200), milestone_times])
             time_steps = np.sort(np.unique(np.round(raw_time_steps, 4)))
@@ -1207,8 +1208,12 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
             velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
 
+            # Tính toán khối lượng chiết được thực tế
+            total_mg = qt * sample_mass          # Tổng mg chất chiết được
+            total_g = total_mg / 1000.0          # Quy đổi ra g
+
             # --- 4. DASHBOARD CHỈ SỐ ---
-            st.subheader(f"📊 2. Báo cáo Động học: {target_name}")
+            st.subheader(f"📊 2. Báo cáo Động học: {target_name} ({sample_mass:.1f} g nguyên liệu)")
             
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(label="Vận tốc ban đầu ($h_0$)", value=f"{h0:.3f}", delta="mg/g.phút", delta_color="normal")
@@ -1216,20 +1221,20 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             m3.metric(label="Thời gian 80% ($t_{80}$)", value=f"{t_80:.1f} phút", help="Ngưỡng bắt đầu bão hòa")
             m4.metric(label="Thời gian 90% ($t_{90}$)", value=f"{t_90:.1f} phút", help="Ngưỡng kinh tế tối đa")
 
-            # --- 5. BIỂU ĐỒ KÉP (TRỰC QUAN HÓA CAO CẤP) ---
+            # --- 5. BIỂU ĐỒ KÉP (ĐÃ ĐỊNH DẠNG ĐẸP KÝ HIỆU TOÁN HỌC Q_T & V_T) ---
             st.subheader("🌌 3. Đồ thị Động học & Vận tốc Tức thời")
             
             fig = make_subplots(specs=[[{"secondary_y": True}]])
 
             fig.add_trace(
-                go.Scatter(x=time_steps, y=qt, name=f"Nồng độ $q_t$ ({target_name})",
+                go.Scatter(x=time_steps, y=qt, name=f"Nồng độ <i>q</i><sub>t</sub> ({target_name})",
                            mode='lines', line=dict(color='blue', width=3),
                            fill='tozeroy', fillcolor='rgba(0, 0, 255, 0.1)'),
                 secondary_y=False,
             )
 
             fig.add_trace(
-                go.Scatter(x=time_steps, y=velocity, name="Vận tốc chiết $V_t$",
+                go.Scatter(x=time_steps, y=velocity, name="Vận tốc chiết <i>V</i><sub>t</sub>",
                            mode='lines', line=dict(color='red', width=2, dash='dot')),
                 secondary_y=True,
             )
@@ -1246,7 +1251,7 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
                     
                     fig.add_vline(x=t_val, line_dash="dash", line_color="gray", opacity=0.5)
 
-            fig.add_hline(y=qe, line_dash="solid", line_color="green", annotation_text=f"Max bão hòa ($q_e$ = {qe})", secondary_y=False)
+            fig.add_hline(y=qe, line_dash="solid", line_color="green", annotation_text=f"Max bão hòa (<i>q</i><sub>e</sub> = {qe})", secondary_y=False)
 
             fig.update_layout(
                 title_text="Động học Pseudo-Second-Order: Nồng độ vs. Vận tốc",
@@ -1254,8 +1259,8 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             fig.update_xaxes(title_text="Thời gian (phút)")
-            fig.update_yaxes(title_text="Nồng độ chiết $q_t$ (mg/g)", secondary_y=False, color="blue")
-            fig.update_yaxes(title_text="Vận tốc $V_t$ (mg/g.phút)", secondary_y=True, color="red")
+            fig.update_yaxes(title_text="Dung lượng chiết <i>q</i><sub>t</sub> (mg/g)", secondary_y=False, color="blue")
+            fig.update_yaxes(title_text="Vận tốc <i>V</i><sub>t</sub> (mg/g.phút)", secondary_y=True, color="red")
 
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1264,21 +1269,21 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
             
             time_diff_80_95 = t_95 - t_80
             yield_diff_80_95 = (0.95 * qe) - (0.80 * qe)
+            yield_diff_mg = yield_diff_80_95 * sample_mass
             
             st.info(f"""
-            **Báo cáo Đánh giá Tối ưu Quy trình cho {target_name}:**
+            **Báo cáo Đánh giá Tối ưu Quy trình cho {target_name} ({sample_mass:.1f} g nguyên liệu):**
             * **Giai đoạn Đột phá (0 đến {t_50:.1f} phút):** Vận tốc chiết cực đại ($h_0 = {h0:.3f}$). Chênh lệch nồng độ lớn giúp rút trích nhanh chóng 50% sản lượng.
             * **Giai đoạn Cản trở không gian ({t_50:.1f} đến {t_80:.1f} phút):** Tốc độ giảm theo hàm mũ (đường nét đứt màu đỏ). Quá trình khuếch tán bị giới hạn.
             * **Giai đoạn Bão hòa lãng phí (Sau {t_80:.1f} phút):** Vận tốc $V_t$ tiệm cận 0. 
             
             **🔥 Khuyến nghị Kinh tế - Kỹ thuật:** 
-            Để tăng thêm **15%** hiệu suất (từ 80% lên 95%), hệ thống phải chạy thêm **{time_diff_80_95:.1f} phút**. Điều này tiêu tốn năng lượng điện (gia nhiệt, máy khuấy, siêu âm) không tương xứng với lượng {target_name} thu được thêm ({yield_diff_80_95:.2f} mg/g). 
+            Để tăng thêm **15%** hiệu suất (từ 80% lên 95%), hệ thống phải chạy thêm **{time_diff_80_95:.1f} phút**. Điều này tiêu tốn năng lượng điện (gia nhiệt, máy khuấy, siêu âm) không tương xứng với lượng {target_name} thu được thêm ({yield_diff_80_95:.2f} mg/g, tương đương **{yield_diff_mg:.2f} mg** cho {sample_mass:.1f}g nguyên liệu). 
             $\\Rightarrow$ **Điểm dừng kỹ thuật (Cut-off point) tối ưu nhất: {t_80:.1f} phút đến {t_90:.1f} phút.**
             """)
 
             # --- 7. BẢNG DỮ LIỆU ---
             with st.expander("📋 Xem và Tải bảng Dữ liệu Mô phỏng Chi tiết"):
-                # Gắn nhãn nhận diện cho các mốc thời gian đặc biệt
                 notes = []
                 for t in time_steps:
                     note = ""
@@ -1290,9 +1295,11 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
 
                 df_display = pd.DataFrame({
                     "Thời gian (phút)": np.round(time_steps, 2), 
-                    "Nồng độ qt (mg/g)": np.round(qt, 4),
+                    "Dung lượng qt (mg/g)": np.round(qt, 4),
                     "Vận tốc Vt (mg/g.ph)": np.round(velocity, 5),
                     "Hiệu suất (%)": np.round((qt / qe) * 100, 2),
+                    f"Tổng thu được ({sample_mass}g mẫu) (mg)": np.round(total_mg, 3),
+                    f"Tổng thu được ({sample_mass}g mẫu) (g)": np.round(total_g, 5),
                     "Ghi chú mốc": notes
                 })
                 st.dataframe(df_display, use_container_width=True)
