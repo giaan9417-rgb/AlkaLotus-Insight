@@ -838,7 +838,9 @@ elif (
             fig_matrix = px.imshow(
                 df_sim_matrix,
                 labels=dict(
-                    x="Hợp chất", y="Hợp chất", color="Tanimoto"
+                    x="Hợp chất",
+                    y="Hợp chất",
+                    color="Chỉ số độ tương đồng",  # Đã đổi nhãn colorbar tại đây
                 ),
                 x=names,
                 y=names,
