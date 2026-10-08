@@ -1193,15 +1193,19 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
         if qe <= 0 or k2 <= 0:
             st.error("Lỗi: Các giá trị $q_e$ và $k_2$ phải lớn hơn 0.")
         else:
-            time_steps = np.linspace(0, max_time, 200)
-            qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
-            velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
-            
             h0 = k2 * (qe**2)
             t_50 = 1 / (k2 * qe)
             t_80 = 4 / (k2 * qe)
             t_90 = 9 / (k2 * qe)
             t_95 = 19 / (k2 * qe)
+
+            # CHÈN BỔ SUNG CÁC MỐC THỜI GIAN TÍNH TOÁN VÀO DÃY TIME_STEPS
+            milestone_times = [t for t in [t_50, t_80, t_90, t_95] if t <= max_time]
+            raw_time_steps = np.concatenate([np.linspace(0, max_time, 200), milestone_times])
+            time_steps = np.sort(np.unique(np.round(raw_time_steps, 4)))
+
+            qt = (k2 * (qe ** 2) * time_steps) / (1 + k2 * qe * time_steps)
+            velocity = (k2 * (qe**2)) / ((1 + k2 * qe * time_steps)**2)
 
             # --- 4. DASHBOARD CHỈ SỐ ---
             st.subheader(f"📊 2. Báo cáo Động học: {target_name}")
@@ -1274,11 +1278,22 @@ elif page in ["6. Động học chiết tách", "6. Động học Chiết tách"
 
             # --- 7. BẢNG DỮ LIỆU ---
             with st.expander("📋 Xem và Tải bảng Dữ liệu Mô phỏng Chi tiết"):
+                # Gắn nhãn nhận diện cho các mốc thời gian đặc biệt
+                notes = []
+                for t in time_steps:
+                    note = ""
+                    if np.isclose(t, t_50, atol=1e-3): note = "⭐ Mốc 50% (t50)"
+                    elif np.isclose(t, t_80, atol=1e-3): note = "🎯 Mốc 80% (t80 - Cut-off)"
+                    elif np.isclose(t, t_90, atol=1e-3): note = "🏁 Mốc 90% (t90)"
+                    elif np.isclose(t, t_95, atol=1e-3): note = "⚠️ Mốc 95% (t95)"
+                    notes.append(note)
+
                 df_display = pd.DataFrame({
                     "Thời gian (phút)": np.round(time_steps, 2), 
                     "Nồng độ qt (mg/g)": np.round(qt, 4),
                     "Vận tốc Vt (mg/g.ph)": np.round(velocity, 5),
-                    "Hiệu suất (%)": np.round((qt / qe) * 100, 2)
+                    "Hiệu suất (%)": np.round((qt / qe) * 100, 2),
+                    "Ghi chú mốc": notes
                 })
                 st.dataframe(df_display, use_container_width=True)
                 
