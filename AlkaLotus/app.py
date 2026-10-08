@@ -87,7 +87,7 @@ if 'visited' not in st.session_state:
 
 
 st.title("☘️🖥️PHYTOINSIGHT PLATFORM")
-st.markdown("<p style='font-size: 1.15em; color: #555; font-style: italic; margin-top: -15px; line-height: 1.4;'>Nền tảng tin sinh học tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer</p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 1.15em; color: #555; font-style: italic; margin-top: -15px; line-height: 1.4;'>Nền tảng tin sinh học  tích hợp dữ liệu nghiên cứu tương tác Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer và tính toán đa chất</p>", unsafe_allow_html=True)
 st.divider()
 
 # --- 4. KHỞI TẠO DỮ LIỆU ---
@@ -142,7 +142,7 @@ st.sidebar.markdown("</div>", unsafe_allow_html=True)
 st.sidebar.divider()
 
 st.sidebar.title("☘️ PhytoInsight Platform.")
-st.sidebar.markdown("<div style='text-align: justify; font-size: 0.9em;'><b>Nền tảng tin sinh học</b>  tích hợp dữ liệu và mô phỏng động học chiết tách Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer.</div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='text-align: justify; font-size: 0.9em;'><b>Nền tảng tin sinh học</b>  tích hợp dữ liệu nghiên cứu tương tác Alkaloid lá sen hướng đích enzyme AChE và BACE1 trong nghiên cứu Alzheimer và tính toán đa chất.</div>", unsafe_allow_html=True)
 
 st.sidebar.divider()
 page = st.sidebar.radio(
