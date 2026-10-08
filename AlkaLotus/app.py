@@ -1065,7 +1065,16 @@ elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
                                               line_close=True, markers=True, template="plotly_white",
                                               color_discrete_sequence=["#d62728", "#1f77b4"])
                     fig_radar.update_traces(fill='toself', opacity=0.7)
-                    fig_radar.update_layout(legend=dict(orientation="h", y=-0.2))
+                    fig_radar.update_layout(
+                        legend=dict(
+                            orientation="h",
+                            y=-0.25,
+                            x=0.5,
+                            xanchor="center",
+                            yanchor="top"
+                        ),
+                        margin=dict(l=30, r=30, b=60, t=30)
+                    )
                     st.plotly_chart(fig_radar, use_container_width=True)
 
                 with c_chart2:
@@ -1109,8 +1118,14 @@ elif page in ["5. Tối ưu dung môi", "5. Tối ưu Dung môi"]:
                             yaxis_title='Phân cực - dP',
                             zaxis_title='LK Hydro - dH',
                         ),
-                        margin=dict(l=0, r=0, b=0, t=0),
-                        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+                        margin=dict(l=10, r=10, b=80, t=10),
+                        legend=dict(
+                            orientation="h",
+                            y=-0.15,
+                            x=0.5,
+                            xanchor="center",
+                            yanchor="top"
+                        )
                     )
                     st.plotly_chart(fig_3d, use_container_width=True)
     except Exception as e:
