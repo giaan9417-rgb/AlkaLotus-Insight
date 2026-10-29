@@ -10,7 +10,7 @@ from data import get_database
 from utils import fetch_pdb, render_3d_molecule, check_lipinski, create_admet_radar, classify_potential
 from scipy.optimize import minimize
 
-# --- 1. CẤU HÌNH TRANGG ---
+# --- 1. CẤU HÌNH TRANG ---
 st.set_page_config(
     page_title="PhytoInsight Platform | Nền tảng tin sinh học",
     layout="wide",
