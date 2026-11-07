@@ -10,7 +10,7 @@ from data import get_database
 from utils import fetch_pdb, render_3d_molecule, check_lipinski, create_admet_radar, classify_potential
 from scipy.optimize import minimize
 
-# --- 1. CẤU HÌNH TRANG ---
+ #1. CẤU HÌNH TRANG
 st.set_page_config(
     page_title="PhytoInsight Platform | Nền tảng tin sinh học",
     layout="wide",
@@ -238,11 +238,11 @@ if page == "1. Thư viện Alkaloid":
 
     st.divider()
 
-    # --- CHỌN HỢP CHẤT MỤC TIÊU (ĐÃ FIX LỖI ĐỒNG BỘ) ---
+    # --- CHỌN HỢP CHẤT MỤC TIÊU  ---
     st.subheader("🎯 Chọn đối tượng nghiên cứu")
     compounds = df['Name'].tolist()
     
-    # Đoạn fix lỗi: Kiểm tra nếu chất trong session_state không còn tồn tại trong list mới
+    # Kiểm tra nếu chất trong session_state không còn tồn tại trong list mới
     if st.session_state.selected_compound not in compounds:
         st.session_state.selected_compound = compounds[0]
         
@@ -254,7 +254,7 @@ if page == "1. Thư viện Alkaloid":
     if choice != st.session_state.selected_compound:
         st.session_state.selected_compound = choice
         st.success(f"Đã chọn **{choice}**. Dữ liệu đã sẵn sàng ở các Module sau!")
-        st.rerun() # Quan trọng: Ép app load lại để Module 2 nhận chất mới ngay lập tức
+        st.rerun() 
 # --- MODULE 2: VIRTUAL DOCKING LAB (BẢN NÂNG CẤP GIAO DIỆN) ---
 elif page == "2. Mô phỏng Docking 3D":
     st.title("🔬 Virtual Docking Lab (In Silico)")
@@ -279,7 +279,7 @@ elif page == "2. Mô phỏng Docking 3D":
             " 2026."
         )
 
-    # DATABASE GỐC CỦA AN
+    # DATABASE GỐC 
     alkaloid_db = {
         "Nuciferine": {
             "BACE1": {"dg": -8.3, "amin": "Asp32", "stab": 75},
@@ -295,7 +295,7 @@ elif page == "2. Mô phỏng Docking 3D":
         },
         "Pronuciferine": {
             "BACE1": {"dg": -8.6, "amin": "Ser203", "stab": 78},
-            "AChE": {"dg": -8.6, "amin": "Phe338", "stab": 80},
+            "AChE": {"dg": -7.6, "amin": "Phe338", "stab": 80},
         },
         "Liensinine": {
             "BACE1": {"dg": -9.6, "amin": "Asp32", "stab": 95},
@@ -643,8 +643,8 @@ elif (
             "TPSA": 38.8,
             "HBD": 0.0,
             "HBA": 4.0,
-            "ΔG AChE": -11.5,
-            "ΔG BACE1": -7.2,
+            "ΔG AChE": -7.9,
+            "ΔG BACE1": -8.9,
         },
         "Verubecestat (Chuẩn BACE1)": {
             "MW": 409.41,
@@ -652,8 +652,8 @@ elif (
             "TPSA": 104.9,
             "HBD": 2.0,
             "HBA": 6.0,
-            "ΔG AChE": -6.8,
-            "ΔG BACE1": -10.4,
+            "ΔG AChE": -8.5,
+            "ΔG BACE1": -8.5,
         },
     }
 
@@ -840,7 +840,7 @@ elif (
                 labels=dict(
                     x="Hợp chất",
                     y="Hợp chất",
-                    color="Chỉ số độ tương đồng",  # Đã đổi nhãn colorbar tại đây
+                    color="Chỉ số độ tương đồng",  
                 ),
                 x=names,
                 y=names,
